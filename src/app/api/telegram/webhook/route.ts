@@ -41,6 +41,17 @@ async function sendMessage(chatId: number, text: string, options?: object) {
   return response.json();
 }
 
+async function answerCallback(callbackQueryId: string) {
+  await fetch(
+    `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/answerCallbackQuery`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ callback_query_id: callbackQueryId }),
+    }
+  );
+}
+
 async function createCheckoutSession(telegramUserId: number, priceId: string) {
   const session = await stripe.checkout.sessions.create({
     mode: "subscription",
@@ -55,6 +66,28 @@ async function createCheckoutSession(telegramUserId: number, priceId: string) {
   return session;
 }
 
+async function showPlans(chatId: number) {
+  await sendMessage(
+    chatId,
+    `💎 <b>Valitse tilauksesi:</b>\n\n` +
+    `🚀 <b>Early Bird</b> - 19,90€/kk\n` +
+    `<i>Rajoitettu: vain 100 paikkaa!</i>\n\n` +
+    `👑 <b>Pro</b> - 29,90€/kk\n` +
+    `<i>Täysi pääsy kaikkeen</i>\n\n` +
+    `📅 <b>Vuositilaus</b> - 249€/vuosi\n` +
+    `<i>Säästä 20% (2kk ilmaiseksi)</i>`,
+    {
+      reply_markup: {
+        inline_keyboard: [
+          [{ text: "🚀 Early Bird - 19,90€/kk", callback_data: "subscribe_earlyBird" }],
+          [{ text: "👑 Pro - 29,90€/kk", callback_data: "subscribe_pro" }],
+          [{ text: "📅 Vuosi - 249€ (säästä 20%)", callback_data: "subscribe_yearly" }],
+        ],
+      },
+    }
+  );
+}
+
 export async function POST(request: NextRequest) {
   try {
     const update = await request.json();
@@ -66,7 +99,15 @@ export async function POST(request: NextRequest) {
       const userId = callbackQuery.from.id;
       const data = callbackQuery.data;
 
-      if (data.startsWith("subscribe_")) {
+      // Answer callback immediately to remove loading state
+      await answerCallback(callbackQuery.id);
+
+      // Show plans
+      if (data === "show_plans") {
+        await showPlans(chatId);
+      }
+      // Subscribe to a plan
+      else if (data.startsWith("subscribe_")) {
         const plan = data.replace("subscribe_", "");
         const priceConfig = PRICES[plan as keyof typeof PRICES];
         
@@ -84,16 +125,6 @@ export async function POST(request: NextRequest) {
           );
         }
       }
-      
-      // Answer callback to remove loading state
-      await fetch(
-        `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/answerCallbackQuery`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ callback_query_id: callbackQuery.id }),
-        }
-      );
       
       return NextResponse.json({ ok: true });
     }
@@ -121,7 +152,7 @@ export async function POST(request: NextRequest) {
             reply_markup: {
               inline_keyboard: [
                 [{ text: "🚀 Tilaa nyt", callback_data: "show_plans" }],
-                [{ text: "📊 Katso tilastot", url: "https://tipstersking.com/leaderboard" }],
+                [{ text: "📊 Katso tilastot", url: "https://www.tipstersking.com/leaderboard" }],
               ],
             },
           }
@@ -129,26 +160,8 @@ export async function POST(request: NextRequest) {
       }
 
       // /subscribe command
-      else if (text === "/subscribe" || text === "show_plans") {
-        await sendMessage(
-          chatId,
-          `💎 <b>Valitse tilauksesi:</b>\n\n` +
-          `🚀 <b>Early Bird</b> - 19,90€/kk\n` +
-          `<i>Rajoitettu: vain 100 paikkaa!</i>\n\n` +
-          `👑 <b>Pro</b> - 29,90€/kk\n` +
-          `<i>Täysi pääsy kaikkeen</i>\n\n` +
-          `📅 <b>Vuositilaus</b> - 249€/vuosi\n` +
-          `<i>Säästä 20% (2kk ilmaiseksi)</i>`,
-          {
-            reply_markup: {
-              inline_keyboard: [
-                [{ text: "🚀 Early Bird - 19,90€/kk", callback_data: "subscribe_earlyBird" }],
-                [{ text: "👑 Pro - 29,90€/kk", callback_data: "subscribe_pro" }],
-                [{ text: "📅 Vuosi - 249€ (säästä 20%)", callback_data: "subscribe_yearly" }],
-              ],
-            },
-          }
-        );
+      else if (text === "/subscribe") {
+        await showPlans(chatId);
       }
 
       // /help command
@@ -166,7 +179,6 @@ export async function POST(request: NextRequest) {
 
       // /status command
       else if (text === "/status") {
-        // TODO: Check subscription status from database
         await sendMessage(
           chatId,
           `📋 <b>Tilauksesi tila</b>\n\n` +
@@ -176,33 +188,9 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Handle callback query for show_plans
-    if (update.callback_query?.data === "show_plans") {
-      const chatId = update.callback_query.message.chat.id;
-      await sendMessage(
-        chatId,
-        `💎 <b>Valitse tilauksesi:</b>\n\n` +
-        `🚀 <b>Early Bird</b> - 19,90€/kk\n` +
-        `<i>Rajoitettu: vain 100 paikkaa!</i>\n\n` +
-        `👑 <b>Pro</b> - 29,90€/kk\n` +
-        `<i>Täysi pääsy kaikkeen</i>\n\n` +
-        `📅 <b>Vuositilaus</b> - 249€/vuosi\n` +
-        `<i>Säästä 20% (2kk ilmaiseksi)</i>`,
-        {
-          reply_markup: {
-            inline_keyboard: [
-              [{ text: "🚀 Early Bird - 19,90€/kk", callback_data: "subscribe_earlyBird" }],
-              [{ text: "👑 Pro - 29,90€/kk", callback_data: "subscribe_pro" }],
-              [{ text: "📅 Vuosi - 249€ (säästä 20%)", callback_data: "subscribe_yearly" }],
-            ],
-          },
-        }
-      );
-    }
-
     return NextResponse.json({ ok: true });
   } catch (error) {
     console.error("Telegram webhook error:", error);
-    return NextResponse.json({ ok: true }); // Always return 200 to Telegram
+    return NextResponse.json({ ok: true });
   }
 }
