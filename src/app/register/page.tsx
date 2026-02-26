@@ -3,7 +3,7 @@
 export const dynamic = 'force-dynamic'
 
 import { useState } from 'react'
-import { getSupabase } from '@/lib/supabase'
+import { supabase } from '@/lib/supabase'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 
@@ -148,5 +148,6 @@ export default function RegisterPage() {
     </div>
   )
 }
+
 
 

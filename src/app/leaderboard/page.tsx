@@ -3,7 +3,7 @@
 export const dynamic = 'force-dynamic'
 
 import { useEffect, useState } from 'react'
-import { getSupabase } from '@/lib/supabase'
+import { supabase } from '@/lib/supabase'
 import Link from 'next/link'
 
 interface TipsterStats {
@@ -225,5 +225,6 @@ export default function LeaderboardPage() {
     </div>
   )
 }
+
 
 
