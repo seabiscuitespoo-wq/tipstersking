@@ -71,25 +71,21 @@ export async function POST(request: NextRequest) {
       console.log("- Email:", customerEmail);
       
       if (telegramUserId) {
-        // Create invite link for premium channel
-        const inviteLink = await createChannelInviteLink();
+        const premiumLink = "https://t.me/+V8eVUct3p3ZhYTlk";
         
         // Send welcome message with invite link
         await sendTelegramMessage(
           telegramUserId,
           `🎉 <b>Kiitos tilauksestasi!</b>\n\n` +
           `Olet nyt TipstersKing Premium -jäsen!\n\n` +
-          (inviteLink 
-            ? `👇 <b>Liity premium-kanavalle:</b>\n${inviteLink}\n\n` 
-            : ``) +
-          `<i>Linkki on henkilökohtainen ja vanhenee 7 päivän kuluttua.</i>\n\n` +
+          `👇 <b>Liity premium-kanavalle:</b>\n${premiumLink}\n\n` +
           `Kysymyksiä? Ota yhteyttä: @TipstersKingSupport`,
           {
-            reply_markup: inviteLink ? {
+            reply_markup: {
               inline_keyboard: [
-                [{ text: "📱 Liity kanavalle", url: inviteLink }],
+                [{ text: "📱 Liity Premium-kanavalle", url: premiumLink }],
               ],
-            } : undefined,
+            },
           }
         );
         

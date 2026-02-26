@@ -67,12 +67,12 @@ function SuccessContent() {
 
             <div className="space-y-3">
               <a 
-                href="https://t.me/tipstersking" 
+                href="https://t.me/+V8eVUct3p3ZhYTlk" 
                 target="_blank"
                 rel="noopener noreferrer"
                 className="block w-full bg-[#0088cc] hover:bg-[#0077b5] text-white py-3 rounded-xl font-semibold transition"
               >
-                📱 Avaa Telegram
+                📱 Liity Premium-kanavalle
               </a>
               <Link 
                 href="/dashboard"
