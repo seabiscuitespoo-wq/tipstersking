@@ -1,6 +1,22 @@
-import { createClient } from '@supabase/supabase-js'
+import { createClient, SupabaseClient } from '@supabase/supabase-js'
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+let supabaseInstance: SupabaseClient | null = null
 
-export const supabase = createClient(supabaseUrl, supabaseAnonKey)
+export function getSupabase(): SupabaseClient {
+  if (supabaseInstance) return supabaseInstance
+  
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+  const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+
+  if (!supabaseUrl || !supabaseAnonKey) {
+    throw new Error('Supabase environment variables not configured')
+  }
+
+  supabaseInstance = createClient(supabaseUrl, supabaseAnonKey)
+  return supabaseInstance
+}
+
+// Legacy export for backwards compatibility
+export const supabase = typeof window !== 'undefined' 
+  ? getSupabase() 
+  : (null as unknown as SupabaseClient)

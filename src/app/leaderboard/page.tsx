@@ -1,7 +1,9 @@
 'use client'
 
+export const dynamic = 'force-dynamic'
+
 import { useEffect, useState } from 'react'
-import { supabase } from '@/lib/supabase'
+import { getSupabase } from '@/lib/supabase'
 import Link from 'next/link'
 
 interface TipsterStats {
@@ -223,3 +225,5 @@ export default function LeaderboardPage() {
     </div>
   )
 }
+
+
