@@ -237,8 +237,8 @@ export default function TipstersPage() {
             </details>
 
             <details className="bg-white/5 rounded-lg p-4">
-              <summary className="text-white font-medium cursor-pointer">How do subscribers find me?</summary>
-              <p className="text-gray-400 mt-2">You get a unique referral link to share. We also promote top tipsters on our homepage and social media.</p>
+              <summary className="text-white font-medium cursor-pointer">How does tracking work?</summary>
+              <p className="text-gray-400 mt-2">You get a referral code to track your signups. All tips are posted to the shared premium channel.</p>
             </details>
           </div>
         </div>
