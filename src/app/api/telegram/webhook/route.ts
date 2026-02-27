@@ -334,12 +334,15 @@ export async function POST(request: NextRequest) {
           `👑 <b>Tervetuloa TipstersKingiin, ${firstName}!</b>\n\n` +
           `Saat parhaat vedonlyöntitipsit suoraan puhelimeesi.\n\n` +
           `🏆 <b>Founding Member -tarjous:</b>\n` +
-          `Ensimmäiset 50 tilaajaa saavat hinnan <b>7,90€/kk IKUISESTI!</b>\n\n` +
+          `Ensimmäiset 50 tilaajaa: <b>7,90€/kk</b> <s>29,90€</s>\n` +
+          `Paikat 51-100: <b>14,90€/kk</b> <s>29,90€</s>\n\n` +
+          `⚡ <i>Hinta pysyy samana IKUISESTI!</i>\n\n` +
           `Mitä haluat tehdä?`,
           {
             reply_markup: {
               inline_keyboard: [
                 [{ text: "🚀 Tilaa nyt", callback_data: "show_plans" }],
+                [{ text: "🌐 Nettisivusto", url: "https://tipstersking.com" }],
                 [{ text: "❓ Usein kysytyt", callback_data: "faq_menu" }],
                 [{ text: "💬 Ota yhteyttä", callback_data: "start_support" }],
               ],
