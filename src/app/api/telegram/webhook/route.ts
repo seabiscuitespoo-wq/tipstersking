@@ -8,22 +8,22 @@ const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
   apiVersion: "2026-01-28.clover",
 });
 
-// Tiered pricing
+// Tiered pricing - LIVE PRICES
 const PRICES = {
   founding: {
-    id: "price_1T5O9cAaocVx6MDwOODjnjGO",
+    id: "price_1T5PSNAaocVx6MDwLrCZpnME",
     name: "🏆 Founding Member",
     price: "€7.90/mo",
     description: "Forever! (spots 1-50)",
   },
   earlyBird: {
-    id: "price_1T5O9jAaocVx6MDwDuyNYIoO",
+    id: "price_1T5PSOAaocVx6MDw1xtQq8MW",
     name: "⭐ Early Bird",
     price: "€14.90/mo",
     description: "Forever! (spots 51-100)",
   },
   premium: {
-    id: "price_1T4yWcAaocVx6MDwOosccZG3",
+    id: "price_1T5PSOAaocVx6MDwjEFxMVTj",
     name: "👑 Premium",
     price: "€29.90/mo",
     description: "Regular price",

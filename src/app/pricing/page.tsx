@@ -3,11 +3,11 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 
-// Tier configuration
+// Tier configuration - LIVE PRICES
 const TIER_CONFIG = {
   founding: {
     maxSpots: 50,
-    priceId: "price_1T5O9cAaocVx6MDwOODjnjGO",
+    priceId: "price_1T5PSNAaocVx6MDwLrCZpnME",
     price: "7.90",
     name: "Founding Member",
     badge: "🏆 Forever",
@@ -15,7 +15,7 @@ const TIER_CONFIG = {
   },
   earlyBird: {
     maxSpots: 100,
-    priceId: "price_1T5O9jAaocVx6MDwDuyNYIoO", 
+    priceId: "price_1T5PSOAaocVx6MDw1xtQq8MW", 
     price: "14.90",
     name: "Early Bird",
     badge: "⭐ Forever",
@@ -23,7 +23,7 @@ const TIER_CONFIG = {
   },
   premium: {
     maxSpots: null,
-    priceId: "price_1T4yWcAaocVx6MDwOosccZG3",
+    priceId: "price_1T5PSOAaocVx6MDwjEFxMVTj",
     price: "29.90",
     name: "Premium",
     badge: null,
