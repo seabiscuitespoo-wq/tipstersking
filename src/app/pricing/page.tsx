@@ -8,42 +8,41 @@ const TIER_CONFIG = {
   founding: {
     maxSpots: 50,
     priceId: "price_1T5O9cAaocVx6MDwOODjnjGO",
-    price: "7,90",
+    price: "7.90",
     name: "Founding Member",
-    badge: "🏆 Ikuisesti",
-    description: "Ensimmäiset 50 tilaajaa",
+    badge: "🏆 Forever",
+    description: "First 50 subscribers",
   },
   earlyBird: {
-    maxSpots: 100, // 51-100
+    maxSpots: 100,
     priceId: "price_1T5O9jAaocVx6MDwDuyNYIoO", 
-    price: "14,90",
+    price: "14.90",
     name: "Early Bird",
-    badge: "⭐ Ikuisesti",
-    description: "Tilaajat 51-100",
+    badge: "⭐ Forever",
+    description: "Subscribers 51-100",
   },
   premium: {
-    maxSpots: null, // unlimited
+    maxSpots: null,
     priceId: "price_1T4yWcAaocVx6MDwOosccZG3",
-    price: "29,90",
+    price: "29.90",
     name: "Premium",
     badge: null,
-    description: "Normaalihinta",
+    description: "Regular price",
   },
 };
 
 const FEATURES = [
-  "Kaikki premium-tipsit",
-  "Telegram-kanava",
-  "Reaaliaikaiset ilmoitukset",
-  "ROI-tilastot",
-  "Yhteisö-chat",
+  "All premium tips",
+  "Telegram channel access",
+  "Real-time notifications",
+  "ROI statistics",
+  "Community chat",
 ];
 
 export default function PricingPage() {
   const [loading, setLoading] = useState<string | null>(null);
   const [subscriberCount, setSubscriberCount] = useState(0);
   
-  // Determine which tier is currently available
   const getCurrentTier = () => {
     if (subscriberCount < 50) return "founding";
     if (subscriberCount < 100) return "earlyBird";
@@ -53,7 +52,6 @@ export default function PricingPage() {
   const currentTier = getCurrentTier();
   const currentConfig = TIER_CONFIG[currentTier as keyof typeof TIER_CONFIG];
 
-  // Calculate spots left for current tier
   const getSpotsLeft = () => {
     if (currentTier === "founding") return 50 - subscriberCount;
     if (currentTier === "earlyBird") return 100 - subscriberCount;
@@ -62,10 +60,8 @@ export default function PricingPage() {
 
   const spotsLeft = getSpotsLeft();
 
-  // TODO: Fetch actual subscriber count from API
   useEffect(() => {
-    // For now, simulate with 0 subscribers
-    // Later: fetch("/api/subscribers/count").then(r => r.json()).then(d => setSubscriberCount(d.count))
+    // TODO: fetch("/api/subscribers/count").then(r => r.json()).then(d => setSubscriberCount(d.count))
     setSubscriberCount(0);
   }, []);
 
@@ -87,11 +83,11 @@ export default function PricingPage() {
       if (data.url) {
         window.location.href = data.url;
       } else {
-        alert("Virhe: " + (data.error || "Tuntematon virhe"));
+        alert("Error: " + (data.error || "Unknown error"));
       }
     } catch (error) {
       console.error("Checkout error:", error);
-      alert("Jokin meni pieleen. Yritä uudelleen.");
+      alert("Something went wrong. Please try again.");
     } finally {
       setLoading(null);
     }
@@ -120,10 +116,10 @@ export default function PricingPage() {
       <main className="container mx-auto px-6 py-16">
         <div className="text-center mb-16">
           <h1 className="text-4xl md:text-5xl font-bold text-white mb-4">
-            Early Bird -hinnoittelu
+            Early Bird Pricing
           </h1>
           <p className="text-xl text-gray-300 max-w-2xl mx-auto">
-            Ensimmäiset 100 tilaajaa saavat pysyvästi halvemman hinnan
+            First 100 subscribers get a permanently lower price
           </p>
         </div>
 
@@ -141,7 +137,7 @@ export default function PricingPage() {
             />
           </div>
           <div className="text-center mt-2 text-white font-medium">
-            {subscriberCount}/100 early bird -paikkaa täytetty
+            {subscriberCount}/100 early bird spots filled
           </div>
         </div>
 
@@ -151,47 +147,47 @@ export default function PricingPage() {
             {/* Founding */}
             <div className={`p-6 rounded-xl ${currentTier === "founding" ? "bg-yellow-500/20 border-2 border-yellow-500" : "bg-white/5 opacity-50"}`}>
               <div className="text-yellow-400 text-sm font-semibold mb-1">🏆 FOUNDING MEMBER</div>
-              <div className="text-3xl font-bold text-white">7,90€</div>
-              <div className="text-gray-400 text-sm">/kk ikuisesti</div>
-              <div className="text-xs text-gray-500 mt-2">Paikat 1-50</div>
+              <div className="text-3xl font-bold text-white">€7.90</div>
+              <div className="text-gray-400 text-sm">/mo forever</div>
+              <div className="text-xs text-gray-500 mt-2">Spots 1-50</div>
               {currentTier === "founding" && (
                 <div className="mt-3 text-yellow-400 text-sm font-medium">
-                  ⚡ {spotsLeft} paikkaa jäljellä!
+                  ⚡ {spotsLeft} spots left!
                 </div>
               )}
               {currentTier !== "founding" && subscriberCount >= 50 && (
-                <div className="mt-3 text-gray-500 text-sm">✓ Loppuunmyyty</div>
+                <div className="mt-3 text-gray-500 text-sm">✓ Sold out</div>
               )}
             </div>
 
             {/* Early Bird */}
             <div className={`p-6 rounded-xl ${currentTier === "earlyBird" ? "bg-purple-500/20 border-2 border-purple-500" : "bg-white/5 opacity-50"}`}>
               <div className="text-purple-400 text-sm font-semibold mb-1">⭐ EARLY BIRD</div>
-              <div className="text-3xl font-bold text-white">14,90€</div>
-              <div className="text-gray-400 text-sm">/kk ikuisesti</div>
-              <div className="text-xs text-gray-500 mt-2">Paikat 51-100</div>
+              <div className="text-3xl font-bold text-white">€14.90</div>
+              <div className="text-gray-400 text-sm">/mo forever</div>
+              <div className="text-xs text-gray-500 mt-2">Spots 51-100</div>
               {currentTier === "earlyBird" && (
                 <div className="mt-3 text-purple-400 text-sm font-medium">
-                  ⚡ {spotsLeft} paikkaa jäljellä!
+                  ⚡ {spotsLeft} spots left!
                 </div>
               )}
               {currentTier === "founding" && (
-                <div className="mt-3 text-gray-500 text-sm">Avautuu kun Founding täynnä</div>
+                <div className="mt-3 text-gray-500 text-sm">Opens when Founding is full</div>
               )}
               {currentTier === "premium" && (
-                <div className="mt-3 text-gray-500 text-sm">✓ Loppuunmyyty</div>
+                <div className="mt-3 text-gray-500 text-sm">✓ Sold out</div>
               )}
             </div>
 
             {/* Premium */}
             <div className={`p-6 rounded-xl ${currentTier === "premium" ? "bg-pink-500/20 border-2 border-pink-500" : "bg-white/5 opacity-50"}`}>
               <div className="text-pink-400 text-sm font-semibold mb-1">👑 PREMIUM</div>
-              <div className="text-3xl font-bold text-white">29,90€</div>
-              <div className="text-gray-400 text-sm">/kk</div>
-              <div className="text-xs text-gray-500 mt-2">Normaalihinta</div>
+              <div className="text-3xl font-bold text-white">€29.90</div>
+              <div className="text-gray-400 text-sm">/mo</div>
+              <div className="text-xs text-gray-500 mt-2">Regular price</div>
               {currentTier === "premium" && (
                 <div className="mt-3 text-pink-400 text-sm font-medium">
-                  Aina saatavilla
+                  Always available
                 </div>
               )}
             </div>
@@ -200,31 +196,33 @@ export default function PricingPage() {
 
         {/* Current offer */}
         <div className="max-w-md mx-auto">
-          <div className="bg-white/5 backdrop-blur-sm rounded-2xl p-8 border-2 border-purple-500 ring-2 ring-purple-500/50">
-            <div className="absolute -top-4 left-1/2 -translate-x-1/2">
-              <span className="bg-purple-600 text-white text-sm font-semibold px-4 py-1 rounded-full">
-                {currentConfig.badge || "Nykyinen hinta"}
-              </span>
-            </div>
+          <div className="bg-white/5 backdrop-blur-sm rounded-2xl p-8 border-2 border-purple-500 ring-2 ring-purple-500/50 relative">
+            {currentConfig.badge && (
+              <div className="absolute -top-4 left-1/2 -translate-x-1/2">
+                <span className="bg-purple-600 text-white text-sm font-semibold px-4 py-1 rounded-full">
+                  {currentConfig.badge}
+                </span>
+              </div>
+            )}
 
-            <div className="text-center mb-8">
+            <div className="text-center mb-8 pt-2">
               <h2 className="text-2xl font-bold text-white mb-2">{currentConfig.name}</h2>
               <p className="text-gray-400 text-sm">{currentConfig.description}</p>
               
               {spotsLeft && spotsLeft <= 20 && (
                 <div className="mt-3 text-orange-400 text-sm font-medium animate-pulse">
-                  🔥 Enää {spotsLeft} paikkaa jäljellä!
+                  🔥 Only {spotsLeft} spots left!
                 </div>
               )}
 
               <div className="mt-6">
-                <span className="text-5xl font-bold text-white">{currentConfig.price}€</span>
-                <span className="text-gray-400 text-lg">/kk</span>
+                <span className="text-5xl font-bold text-white">€{currentConfig.price}</span>
+                <span className="text-gray-400 text-lg">/mo</span>
               </div>
               
               {currentTier !== "premium" && (
                 <div className="mt-2 text-green-400 text-sm">
-                  Säästät {currentTier === "founding" ? "22€" : "15€"}/kk ikuisesti!
+                  Save €{currentTier === "founding" ? "22" : "15"}/mo forever!
                 </div>
               )}
             </div>
@@ -259,10 +257,10 @@ export default function PricingPage() {
                     <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                     <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                   </svg>
-                  Ladataan...
+                  Loading...
                 </span>
               ) : (
-                `Tilaa nyt ${currentConfig.price}€/kk →`
+                `Subscribe Now €${currentConfig.price}/mo →`
               )}
             </button>
           </div>
@@ -270,34 +268,55 @@ export default function PricingPage() {
 
         {/* Trust badges */}
         <div className="mt-16 text-center">
-          <p className="text-gray-400 mb-4">Turvallinen maksu</p>
+          <p className="text-gray-400 mb-4">Secure payment</p>
           <div className="flex justify-center items-center gap-6 text-gray-500">
-            <span>🔒 SSL-suojattu</span>
+            <span>🔒 SSL secured</span>
             <span>💳 Stripe</span>
-            <span>🔄 Peruuta milloin vain</span>
+            <span>🔄 Cancel anytime</span>
           </div>
         </div>
 
         {/* FAQ */}
         <div className="mt-20 max-w-2xl mx-auto">
-          <h2 className="text-2xl font-bold text-white text-center mb-8">Usein kysytyt</h2>
+          <h2 className="text-2xl font-bold text-white text-center mb-8">Frequently Asked Questions</h2>
           
           <div className="space-y-4">
             <details className="bg-white/5 rounded-lg p-4">
-              <summary className="text-white font-medium cursor-pointer">Mitä "ikuisesti" tarkoittaa?</summary>
-              <p className="text-gray-400 mt-2">Founding Member ja Early Bird -hinnat pysyvät samana niin kauan kuin tilauksesi on aktiivinen. Vaikka hinta nousisi myöhemmin, sinun hintasi ei muutu.</p>
+              <summary className="text-white font-medium cursor-pointer">What does "forever" mean?</summary>
+              <p className="text-gray-400 mt-2">Founding Member and Early Bird prices stay the same as long as your subscription is active. Even if we raise prices later, your rate won't change.</p>
             </details>
             
             <details className="bg-white/5 rounded-lg p-4">
-              <summary className="text-white font-medium cursor-pointer">Voinko perua milloin vain?</summary>
-              <p className="text-gray-400 mt-2">Kyllä! Voit perua tilauksesi koska tahansa. Saat käyttää palvelua laskutusjakson loppuun asti.</p>
+              <summary className="text-white font-medium cursor-pointer">Can I cancel anytime?</summary>
+              <p className="text-gray-400 mt-2">Yes! You can cancel your subscription at any time. You'll keep access until the end of your billing period.</p>
             </details>
 
             <details className="bg-white/5 rounded-lg p-4">
-              <summary className="text-white font-medium cursor-pointer">Miten saan pääsyn Telegram-kanavalle?</summary>
-              <p className="text-gray-400 mt-2">Maksun jälkeen saat automaattisesti kutsulinkin sähköpostiisi ja success-sivulle. Klikkaa linkkiä ja liity kanavalle!</p>
+              <summary className="text-white font-medium cursor-pointer">How do I access the Telegram channel?</summary>
+              <p className="text-gray-400 mt-2">After payment, you'll automatically receive an invite link via email and on the success page. Click the link to join the channel!</p>
+            </details>
+
+            <details className="bg-white/5 rounded-lg p-4">
+              <summary className="text-white font-medium cursor-pointer">What sports do you cover?</summary>
+              <p className="text-gray-400 mt-2">We primarily cover football, hockey, and basketball. We focus on quality over quantity — only the best value bets make it to the channel.</p>
             </details>
           </div>
+        </div>
+
+        {/* Telegram CTA */}
+        <div className="mt-20 text-center">
+          <p className="text-gray-400 mb-4">Questions? Chat with us on Telegram</p>
+          <a 
+            href="https://t.me/TipstersKingBot" 
+            target="_blank" 
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-2 bg-[#0088cc] hover:bg-[#0077b5] text-white px-6 py-3 rounded-lg font-medium transition"
+          >
+            <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+              <path d="M11.944 0A12 12 0 0 0 0 12a12 12 0 0 0 12 12 12 12 0 0 0 12-12A12 12 0 0 0 12 0a12 12 0 0 0-.056 0zm4.962 7.224c.1-.002.321.023.465.14a.506.506 0 0 1 .171.325c.016.093.036.306.02.472-.18 1.898-.962 6.502-1.36 8.627-.168.9-.499 1.201-.82 1.23-.696.065-1.225-.46-1.9-.902-1.056-.693-1.653-1.124-2.678-1.8-1.185-.78-.417-1.21.258-1.91.177-.184 3.247-2.977 3.307-3.23.007-.032.014-.15-.056-.212s-.174-.041-.249-.024c-.106.024-1.793 1.14-5.061 3.345-.48.33-.913.49-1.302.48-.428-.008-1.252-.241-1.865-.44-.752-.245-1.349-.374-1.297-.789.027-.216.325-.437.893-.663 3.498-1.524 5.83-2.529 6.998-3.014 3.332-1.386 4.025-1.627 4.476-1.635z"/>
+            </svg>
+            @TipstersKingBot
+          </a>
         </div>
       </main>
     </div>
