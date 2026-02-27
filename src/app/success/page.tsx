@@ -26,10 +26,10 @@ function SuccessContent() {
               </svg>
             </div>
             <h1 className="text-2xl font-bold text-white mb-2">
-              Käsitellään tilausta...
+              Processing your order...
             </h1>
             <p className="text-gray-400">
-              Odota hetki
+              Please wait a moment
             </p>
           </>
         ) : (
@@ -41,26 +41,26 @@ function SuccessContent() {
             </div>
             
             <h1 className="text-3xl font-bold text-white mb-2">
-              Tervetuloa! 🎉
+              Welcome! 🎉
             </h1>
             <p className="text-gray-300 mb-8">
-              Tilauksesi on vahvistettu. Saat pian kutsun premium-kanaville.
+              Your subscription is confirmed. You'll receive an invite to the premium channel shortly.
             </p>
 
             <div className="bg-white/5 rounded-xl p-4 mb-8 text-left">
-              <h2 className="text-white font-semibold mb-3">Seuraavat askeleet:</h2>
+              <h2 className="text-white font-semibold mb-3">Next steps:</h2>
               <ul className="space-y-3 text-gray-300 text-sm">
                 <li className="flex items-start">
                   <span className="bg-purple-500 text-white text-xs w-5 h-5 rounded-full flex items-center justify-center mr-3 mt-0.5 flex-shrink-0">1</span>
-                  Tarkista sähköpostisi — lähetimme vahvistuksen
+                  Check your email — we've sent a confirmation
                 </li>
                 <li className="flex items-start">
                   <span className="bg-purple-500 text-white text-xs w-5 h-5 rounded-full flex items-center justify-center mr-3 mt-0.5 flex-shrink-0">2</span>
-                  Klikkaa Telegram-kutsulinkiä liittyäksesi kanavalle
+                  Click the Telegram invite link to join the channel
                 </li>
                 <li className="flex items-start">
                   <span className="bg-purple-500 text-white text-xs w-5 h-5 rounded-full flex items-center justify-center mr-3 mt-0.5 flex-shrink-0">3</span>
-                  Ota ilmoitukset käyttöön, niin et missaa tipsejä!
+                  Turn on notifications so you don't miss any tips!
                 </li>
               </ul>
             </div>
@@ -72,7 +72,7 @@ function SuccessContent() {
                 rel="noopener noreferrer"
                 className="block w-full bg-[#0088cc] hover:bg-[#0077b5] text-white py-3 rounded-xl font-semibold transition"
               >
-                📱 Liity Premium-kanavalle
+                📱 Join Premium Channel
               </a>
               <Link 
                 href="/dashboard"
@@ -84,7 +84,7 @@ function SuccessContent() {
 
             {sessionId && (
               <p className="mt-6 text-gray-500 text-xs">
-                Tilausnumero: {sessionId.slice(0, 20)}...
+                Order ID: {sessionId.slice(0, 20)}...
               </p>
             )}
           </>
@@ -100,7 +100,7 @@ export default function SuccessPage() {
       <Suspense fallback={
         <div className="text-white text-center">
           <div className="animate-spin w-8 h-8 border-4 border-purple-500 border-t-transparent rounded-full mx-auto mb-4"></div>
-          Ladataan...
+          Loading...
         </div>
       }>
         <SuccessContent />
