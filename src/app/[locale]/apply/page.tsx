@@ -42,15 +42,19 @@ export default function ApplyPage() {
     setError('');
 
     try {
-      // TODO: Implement API call
-      // const res = await fetch('/api/tipsters/apply', {
-      //   method: 'POST',
-      //   headers: { 'Content-Type': 'application/json' },
-      //   body: JSON.stringify(form),
-      // });
+      const res = await fetch('/api/tipsters/apply', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(form),
+      });
       
-      // Simulate success for now
-      await new Promise(resolve => setTimeout(resolve, 1500));
+      const data = await res.json();
+      
+      if (!res.ok) {
+        setError(data.error || t('form.error'));
+        return;
+      }
+      
       setSuccess(true);
     } catch (err) {
       setError(t('form.error'));
