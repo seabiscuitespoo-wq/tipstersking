@@ -1,25 +1,21 @@
-// ============================================================
-// Tipster Application API
-// POST: Submit a new tipster application
-// ============================================================
-
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 
-let _db: any = null;
-function db() {
-  if (!_db) {
-    const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-    const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
-    if (!url || !key) throw new Error('Missing Supabase env vars');
-    _db = createClient(url, key);
-  }
-  return _db;
+function getSupabase() {
+  return createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!
+  );
 }
 
-export const dynamic = 'force-dynamic';
+// Supported leagues
+const VALID_LEAGUES = [
+  'La Liga', 'Premier League', 'Champions League', 'Europa League',
+  'Bundesliga', 'Serie A', 'Ligue 1', 'Eredivisie',
+  'Primeira Liga', 'Brasileirão', 'MLS'
+];
 
-interface ApplicationData {
+interface ApplicationBody {
   alias: string;
   email: string;
   telegram: string;
@@ -28,131 +24,152 @@ interface ApplicationData {
   trackRecord?: string;
 }
 
-export async function POST(request: NextRequest) {
+export async function POST(req: NextRequest) {
   try {
-    const body: ApplicationData = await request.json();
-
+    const supabase = getSupabase();
+    const body: ApplicationBody = await req.json();
+    
     // Validate required fields
-    const errors: string[] = [];
-
-    if (!body.alias || body.alias.length < 3 || body.alias.length > 50) {
-      errors.push('Alias must be 3-50 characters');
+    if (!body.alias || !body.email || !body.telegram || !body.experience) {
+      return NextResponse.json(
+        { error: 'Missing required fields' },
+        { status: 400 }
+      );
     }
-
+    
+    // Validate alias length
+    if (body.alias.length < 3 || body.alias.length > 50) {
+      return NextResponse.json(
+        { error: 'Alias must be between 3 and 50 characters' },
+        { status: 400 }
+      );
+    }
+    
+    // Validate alias format (alphanumeric + underscore only)
     if (!/^[a-zA-Z0-9_]+$/.test(body.alias)) {
-      errors.push('Alias can only contain letters, numbers, and underscores');
+      return NextResponse.json(
+        { error: 'Alias can only contain letters, numbers, and underscores' },
+        { status: 400 }
+      );
     }
-
-    if (!body.email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(body.email)) {
-      errors.push('Valid email is required');
+    
+    // Validate email
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(body.email)) {
+      return NextResponse.json(
+        { error: 'Invalid email format' },
+        { status: 400 }
+      );
     }
-
-    if (!body.telegram || !body.telegram.startsWith('@')) {
-      errors.push('Telegram username must start with @');
-    }
-
+    
+    // Validate leagues
     if (!body.leagues || body.leagues.length === 0) {
-      errors.push('Select at least one league');
+      return NextResponse.json(
+        { error: 'Select at least one league' },
+        { status: 400 }
+      );
     }
-
-    if (!body.experience || body.experience.length < 50) {
-      errors.push('Experience must be at least 50 characters');
+    
+    // Filter to only valid leagues
+    const validatedLeagues = body.leagues.filter(l => VALID_LEAGUES.includes(l));
+    if (validatedLeagues.length === 0) {
+      return NextResponse.json(
+        { error: 'Select at least one valid league' },
+        { status: 400 }
+      );
     }
-
-    if (errors.length > 0) {
-      return NextResponse.json({ error: errors.join(', ') }, { status: 400 });
+    
+    // Clean telegram username (remove @ if present)
+    const telegramUsername = body.telegram.replace(/^@/, '');
+    
+    // Validate telegram username
+    if (!/^[a-zA-Z0-9_]{5,32}$/.test(telegramUsername)) {
+      return NextResponse.json(
+        { error: 'Invalid Telegram username format' },
+        { status: 400 }
+      );
     }
-
-    // Check if alias is already taken
-    const { data: existingAlias } = await db()
+    
+    // Check for existing pending application with same email
+    const { data: existingByEmail } = await supabase
+      .from('tipster_applications')
+      .select('id, status')
+      .eq('email', body.email.toLowerCase())
+      .eq('status', 'pending')
+      .single();
+    
+    if (existingByEmail) {
+      return NextResponse.json(
+        { error: 'You already have a pending application' },
+        { status: 409 }
+      );
+    }
+    
+    // Check for existing pending application with same alias
+    const { data: existingByAlias } = await supabase
+      .from('tipster_applications')
+      .select('id, status')
+      .ilike('alias', body.alias)
+      .eq('status', 'pending')
+      .single();
+    
+    if (existingByAlias) {
+      return NextResponse.json(
+        { error: 'This alias is already taken in a pending application' },
+        { status: 409 }
+      );
+    }
+    
+    // Check if alias is already used by approved tipster
+    const { data: existingTipster } = await supabase
       .from('tipster_profiles')
       .select('id')
-      .eq('alias', body.alias)
+      .ilike('alias', body.alias)
       .single();
-
-    if (existingAlias) {
-      return NextResponse.json({ error: 'Alias is already taken' }, { status: 400 });
+    
+    if (existingTipster) {
+      return NextResponse.json(
+        { error: 'This alias is already taken by an existing tipster' },
+        { status: 409 }
+      );
     }
-
-    // Check if email already has a pending/approved application
-    const { data: existingProfile } = await db()
-      .from('profiles')
-      .select('id, role')
-      .eq('email', body.email)
-      .single();
-
-    let profileId: string;
-
-    if (existingProfile) {
-      // Check if already a tipster
-      const { data: existingTipster } = await db()
-        .from('tipster_profiles')
-        .select('application_status')
-        .eq('profile_id', existingProfile.id)
-        .single();
-
-      if (existingTipster) {
-        if (existingTipster.application_status === 'approved') {
-          return NextResponse.json({ error: 'You are already an approved tipster' }, { status: 400 });
-        }
-        if (existingTipster.application_status === 'pending') {
-          return NextResponse.json({ error: 'You already have a pending application' }, { status: 400 });
-        }
-      }
-
-      profileId = existingProfile.id;
-    } else {
-      // Create new profile
-      const { data: newProfile, error: profileError } = await db()
-        .from('profiles')
-        .insert({
-          email: body.email,
-          username: body.alias.toLowerCase(),
-          display_name: body.alias,
-          role: 'subscriber', // Will be updated to 'tipster' on approval
-        })
-        .select('id')
-        .single();
-
-      if (profileError || !newProfile) {
-        console.error('Failed to create profile:', profileError);
-        return NextResponse.json({ error: 'Failed to create profile' }, { status: 500 });
-      }
-
-      profileId = newProfile.id;
-    }
-
-    // Create tipster profile with pending status
-    const applicationNote = JSON.stringify({
-      leagues: body.leagues,
-      experience: body.experience,
-      trackRecord: body.trackRecord || null,
-      telegram: body.telegram,
-      appliedAt: new Date().toISOString(),
-    });
-
-    const { error: tipsterError } = await db()
-      .from('tipster_profiles')
+    
+    // Insert application
+    const { data, error } = await supabase
+      .from('tipster_applications')
       .insert({
-        profile_id: profileId,
+        email: body.email.toLowerCase(),
         alias: body.alias,
-        application_status: 'pending',
-        application_note: applicationNote,
-        active: false, // Will be set to true on approval
-      });
-
-    if (tipsterError) {
-      console.error('Failed to create tipster profile:', tipsterError);
-      return NextResponse.json({ error: 'Failed to submit application' }, { status: 500 });
+        telegram_username: telegramUsername,
+        leagues: validatedLeagues,
+        experience: body.experience,
+        track_record_url: body.trackRecord || null,
+        status: 'pending'
+      })
+      .select('id')
+      .single();
+    
+    if (error) {
+      console.error('Error inserting application:', error);
+      return NextResponse.json(
+        { error: 'Failed to submit application' },
+        { status: 500 }
+      );
     }
-
-    return NextResponse.json({ 
-      success: true, 
-      message: 'Application submitted successfully' 
+    
+    // TODO: Send confirmation email
+    // TODO: Notify admins via Telegram
+    
+    return NextResponse.json({
+      success: true,
+      applicationId: data.id,
+      message: 'Application submitted successfully'
     });
-
+    
   } catch (error) {
     console.error('Application error:', error);
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+    return NextResponse.json(
+      { error: 'Internal server error' },
+      { status: 500 }
+    );
   }
 }

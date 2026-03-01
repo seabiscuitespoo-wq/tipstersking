@@ -1,0 +1,22 @@
+{
+  "applications": {
+    "title": "Solicitudes de Tipster",
+    "subtitle": "Revisar y gestionar solicitudes de tipsters",
+    "filter": {
+      "pending": "Pendientes",
+      "approved": "Aprobadas",
+      "rejected": "Rechazadas",
+      "all": "Todas"
+    },
+    "empty": "No se encontraron solicitudes",
+    "appliedOn": "Solicitado",
+    "experience": "Experiencia",
+    "trackRecord": "Historial",
+    "adminNotes": "Notas del Admin",
+    "adminNotesPlaceholder": "Notas opcionales sobre esta decisión...",
+    "action": {
+      "approve": "Aprobar",
+      "reject": "Rechazar"
+    }
+  }
+}

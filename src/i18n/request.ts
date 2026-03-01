@@ -17,6 +17,7 @@ export default getRequestConfig(async ({ requestLocale }) => {
   const common = (await import(`../../locales/${locale}/common.json`)).default;
   const dashboard = (await import(`../../locales/${locale}/dashboard.json`)).default;
   const tipster = (await import(`../../locales/${locale}/tipster.json`)).default;
+  const admin = (await import(`../../locales/${locale}/admin.json`)).default;
 
   return {
     locale,
@@ -24,6 +25,7 @@ export default getRequestConfig(async ({ requestLocale }) => {
       ...common,
       dashboard,
       tipster,
+      admin,
     },
   };
 });

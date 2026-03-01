@@ -1,0 +1,22 @@
+{
+  "applications": {
+    "title": "Tipster Applications",
+    "subtitle": "Review and manage tipster applications",
+    "filter": {
+      "pending": "Pending",
+      "approved": "Approved",
+      "rejected": "Rejected",
+      "all": "All"
+    },
+    "empty": "No applications found",
+    "appliedOn": "Applied",
+    "experience": "Experience",
+    "trackRecord": "Track Record",
+    "adminNotes": "Admin Notes",
+    "adminNotesPlaceholder": "Optional notes about this decision...",
+    "action": {
+      "approve": "Approve",
+      "reject": "Reject"
+    }
+  }
+}
