@@ -63,6 +63,31 @@ interface Stats {
   }>;
 }
 
+interface ConnectStatus {
+  connected: boolean;
+  accountId: string | null;
+  chargesEnabled: boolean;
+  payoutsEnabled: boolean;
+  detailsSubmitted: boolean;
+}
+
+interface PayoutData {
+  commissions: Array<{
+    id: number;
+    period_year: number;
+    period_month: number;
+    rank: number;
+    roi_pct: number;
+    net_amount: number;
+    paid_at: string | null;
+  }>;
+  totals: {
+    total: number;
+    pending: number;
+    paid: number;
+  };
+}
+
 const MARKET_TYPES = [
   { value: '1X2_home', label: 'Home Win' },
   { value: '1X2_draw', label: 'Draw' },
@@ -80,7 +105,7 @@ export default function TipsterDashboardPage() {
   const t = useTranslations('dashboard.tipster');
   const tNav = useTranslations('nav');
   
-  const [activeTab, setActiveTab] = useState<'matches' | 'tips' | 'submit'>('matches');
+  const [activeTab, setActiveTab] = useState<'matches' | 'tips' | 'submit' | 'earnings'>('matches');
   const [matches, setMatches] = useState<Match[]>([]);
   const [tips, setTips] = useState<Tip[]>([]);
   const [stats, setStats] = useState<Stats | null>(null);
@@ -94,16 +119,23 @@ export default function TipsterDashboardPage() {
   const [analysis, setAnalysis] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [submitSuccess, setSubmitSuccess] = useState(false);
+  
+  // Connect/Payouts state
+  const [connectStatus, setConnectStatus] = useState<ConnectStatus | null>(null);
+  const [payoutData, setPayoutData] = useState<PayoutData | null>(null);
+  const [connectLoading, setConnectLoading] = useState(false);
 
   const fetchData = useCallback(async () => {
     setLoading(true);
     setError('');
     
     try {
-      const [matchesRes, tipsRes, statsRes] = await Promise.all([
+      const [matchesRes, tipsRes, statsRes, connectRes, payoutsRes] = await Promise.all([
         fetch('/api/tipster/matches?hours=48'),
         fetch(`/api/tipster/tips?profileId=${MOCK_PROFILE_ID}&limit=20`),
         fetch(`/api/tipster/stats?profileId=${MOCK_PROFILE_ID}`),
+        fetch('/api/tipster/connect'),
+        fetch('/api/tipster/payouts'),
       ]);
       
       if (matchesRes.ok) {
@@ -121,6 +153,16 @@ export default function TipsterDashboardPage() {
         setStats(statsData);
       }
       
+      if (connectRes.ok) {
+        const connectData = await connectRes.json();
+        setConnectStatus(connectData);
+      }
+      
+      if (payoutsRes.ok) {
+        const payoutsData = await payoutsRes.json();
+        setPayoutData(payoutsData);
+      }
+      
     } catch (err) {
       setError('Failed to load data');
     } finally {
@@ -131,6 +173,39 @@ export default function TipsterDashboardPage() {
   useEffect(() => {
     fetchData();
   }, [fetchData]);
+
+  const handleSetupConnect = async () => {
+    setConnectLoading(true);
+    
+    try {
+      const res = await fetch('/api/tipster/connect', {
+        method: 'POST',
+      });
+      
+      const data = await res.json();
+      
+      if (!res.ok) {
+        alert(data.error || 'Failed to setup payouts');
+        return;
+      }
+      
+      if (data.alreadyComplete) {
+        alert('Payouts already configured!');
+        fetchData();
+        return;
+      }
+      
+      // Redirect to Stripe onboarding
+      if (data.onboardingUrl) {
+        window.location.href = data.onboardingUrl;
+      }
+      
+    } catch (err) {
+      alert('Failed to setup payouts');
+    } finally {
+      setConnectLoading(false);
+    }
+  };
 
   const handleSubmitTip = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -267,8 +342,8 @@ export default function TipsterDashboardPage() {
           )}
 
           {/* Tabs */}
-          <div className="flex gap-2 mb-6 border-b border-white/10 pb-2">
-            {(['matches', 'tips', 'submit'] as const).map((tab) => (
+          <div className="flex gap-2 mb-6 border-b border-white/10 pb-2 overflow-x-auto">
+            {(['matches', 'tips', 'submit', 'earnings'] as const).map((tab) => (
               <button
                 key={tab}
                 onClick={() => setActiveTab(tab)}
@@ -281,6 +356,7 @@ export default function TipsterDashboardPage() {
                 {tab === 'matches' && t('matches.title')}
                 {tab === 'tips' && t('tips.title')}
                 {tab === 'submit' && t('submit.title')}
+                {tab === 'earnings' && t('earnings')}
               </button>
             ))}
           </div>
@@ -514,6 +590,101 @@ export default function TipsterDashboardPage() {
                       {submitting ? '...' : t('submit.confirm')}
                     </button>
                   </form>
+                </div>
+              )}
+
+              {/* Earnings Tab */}
+              {activeTab === 'earnings' && (
+                <div className="space-y-6">
+                  {/* Payout Setup Card */}
+                  <div className="bg-white/5 rounded-xl p-6 border border-white/10">
+                    <h3 className="text-xl font-bold text-white mb-4">{t('payoutSetup')}</h3>
+                    
+                    {connectStatus?.payoutsEnabled ? (
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 bg-green-500/20 rounded-full flex items-center justify-center">
+                          <span className="text-green-400">✓</span>
+                        </div>
+                        <div>
+                          <div className="text-white font-medium">{t('payoutsConfigured')}</div>
+                          <div className="text-gray-400 text-sm">Account ID: {connectStatus.accountId?.slice(-8)}</div>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="space-y-4">
+                        <p className="text-gray-400">
+                          Set up your Stripe account to receive monthly commission payouts.
+                        </p>
+                        <button
+                          onClick={handleSetupConnect}
+                          disabled={connectLoading}
+                          className="px-6 py-3 bg-amber-500 hover:bg-amber-600 text-black font-semibold rounded-lg transition disabled:opacity-50"
+                        >
+                          {connectLoading ? 'Setting up...' : t('setupPayouts')}
+                        </button>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Earnings Summary */}
+                  {payoutData && (
+                    <div className="grid grid-cols-3 gap-4">
+                      <div className="bg-white/5 rounded-xl p-4 border border-white/10 text-center">
+                        <div className="text-gray-400 text-sm mb-1">{t('allTime')}</div>
+                        <div className="text-2xl font-bold text-white">
+                          €{payoutData.totals.total.toFixed(2)}
+                        </div>
+                      </div>
+                      <div className="bg-white/5 rounded-xl p-4 border border-white/10 text-center">
+                        <div className="text-gray-400 text-sm mb-1">{t('pendingPayout')}</div>
+                        <div className="text-2xl font-bold text-amber-400">
+                          €{payoutData.totals.pending.toFixed(2)}
+                        </div>
+                      </div>
+                      <div className="bg-white/5 rounded-xl p-4 border border-white/10 text-center">
+                        <div className="text-gray-400 text-sm mb-1">Paid Out</div>
+                        <div className="text-2xl font-bold text-green-400">
+                          €{payoutData.totals.paid.toFixed(2)}
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Commission History */}
+                  {payoutData && payoutData.commissions.length > 0 && (
+                    <div className="bg-white/5 rounded-xl border border-white/10 overflow-hidden">
+                      <div className="p-4 border-b border-white/10">
+                        <h3 className="text-white font-bold">Commission History</h3>
+                      </div>
+                      <div className="divide-y divide-white/10">
+                        {payoutData.commissions.map((commission) => (
+                          <div key={commission.id} className="p-4 flex items-center justify-between">
+                            <div>
+                              <div className="text-white font-medium">
+                                {new Date(commission.period_year, commission.period_month - 1).toLocaleDateString('en-US', { year: 'numeric', month: 'long' })}
+                              </div>
+                              <div className="text-gray-400 text-sm">
+                                Rank #{commission.rank} • ROI {commission.roi_pct?.toFixed(1)}%
+                              </div>
+                            </div>
+                            <div className="text-right">
+                              <div className="text-white font-bold">€{commission.net_amount.toFixed(2)}</div>
+                              <div className={`text-xs ${commission.paid_at ? 'text-green-400' : 'text-yellow-400'}`}>
+                                {commission.paid_at ? 'Paid' : 'Pending'}
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* No History */}
+                  {payoutData && payoutData.commissions.length === 0 && (
+                    <div className="text-center py-12 text-gray-500">
+                      No commission history yet. Keep submitting winning tips!
+                    </div>
+                  )}
                 </div>
               )}
             </>
