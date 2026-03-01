@@ -1,15 +1,48 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useTranslations } from 'next-intl';
 import { Link } from '@/i18n/navigation';
 import { LocaleSwitcher } from '@/components/LocaleSwitcher';
+
+interface PricingData {
+  country: string | null;
+  currency: 'eur' | 'usd' | 'gbp';
+  price: string;
+  amount: number;
+}
+
+const CURRENCY_INFO = {
+  eur: { flag: '🇪🇺', name: 'EUR' },
+  usd: { flag: '🇺🇸', name: 'USD' },
+  gbp: { flag: '🇬🇧', name: 'GBP' },
+};
 
 export default function PricingPage() {
   const t = useTranslations('pricing');
   const tNav = useTranslations('nav');
   const tFaq = useTranslations('faq');
   const [loading, setLoading] = useState(false);
+  const [pricing, setPricing] = useState<PricingData | null>(null);
+  const [selectedCurrency, setSelectedCurrency] = useState<'eur' | 'usd' | 'gbp'>('eur');
+
+  // Fetch geo-pricing on mount
+  useEffect(() => {
+    async function fetchPricing() {
+      try {
+        const res = await fetch('/api/stripe/checkout');
+        if (res.ok) {
+          const data = await res.json();
+          setPricing(data);
+          setSelectedCurrency(data.currency);
+        }
+      } catch (err) {
+        // Default to EUR on error
+        setPricing({ country: null, currency: 'eur', price: '€9.99', amount: 999 });
+      }
+    }
+    fetchPricing();
+  }, []);
 
   const handleSubscribe = async () => {
     setLoading(true);
@@ -19,7 +52,7 @@ export default function PricingPage() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          // Geo-pricing handled server-side
+          currency: selectedCurrency,
         }),
       });
 
@@ -36,6 +69,15 @@ export default function PricingPage() {
     } finally {
       setLoading(false);
     }
+  };
+
+  const getDisplayPrice = () => {
+    const prices = {
+      eur: '€9.99',
+      usd: '$9.99',
+      gbp: '£8.99',
+    };
+    return prices[selectedCurrency];
   };
 
   return (
@@ -75,13 +117,33 @@ export default function PricingPage() {
               </div>
               
               <div className="flex items-baseline justify-center gap-2">
-                <span className="text-5xl font-bold text-white">{t('priceEur')}</span>
+                <span className="text-5xl font-bold text-white">{getDisplayPrice()}</span>
                 <span className="text-gray-400">{t('perMonth')}</span>
               </div>
               
-              <div className="text-gray-500 text-sm mt-2">
-                {t('priceUsd')} USD • {t('priceGbp')} GBP
+              {/* Currency Selector */}
+              <div className="flex justify-center gap-2 mt-4">
+                {(['eur', 'usd', 'gbp'] as const).map((curr) => (
+                  <button
+                    key={curr}
+                    onClick={() => setSelectedCurrency(curr)}
+                    className={`px-3 py-1.5 rounded-lg text-sm font-medium transition flex items-center gap-1.5 ${
+                      selectedCurrency === curr
+                        ? 'bg-green-500/20 text-green-400 border border-green-500/30'
+                        : 'bg-white/5 text-gray-400 hover:bg-white/10'
+                    }`}
+                  >
+                    <span>{CURRENCY_INFO[curr].flag}</span>
+                    <span>{CURRENCY_INFO[curr].name}</span>
+                  </button>
+                ))}
               </div>
+              
+              {pricing?.country && (
+                <p className="text-gray-500 text-xs mt-2">
+                  Detected: {pricing.country}
+                </p>
+              )}
             </div>
 
             <ul className="space-y-4 mb-8">
@@ -121,6 +183,30 @@ export default function PricingPage() {
             <span>🔒 SSL Secured</span>
             <span>💳 Stripe</span>
             <span>🔄 Cancel Anytime</span>
+          </div>
+        </div>
+
+        {/* Comparison */}
+        <div className="mt-12 max-w-md mx-auto">
+          <div className="bg-white/5 rounded-xl p-4 border border-white/10">
+            <h3 className="text-white font-medium text-center mb-3">All Currencies</h3>
+            <div className="grid grid-cols-3 gap-4 text-center text-sm">
+              <div>
+                <div className="text-2xl mb-1">🇪🇺</div>
+                <div className="text-white font-bold">€9.99</div>
+                <div className="text-gray-500">EUR</div>
+              </div>
+              <div>
+                <div className="text-2xl mb-1">🇺🇸</div>
+                <div className="text-white font-bold">$9.99</div>
+                <div className="text-gray-500">USD</div>
+              </div>
+              <div>
+                <div className="text-2xl mb-1">🇬🇧</div>
+                <div className="text-white font-bold">£8.99</div>
+                <div className="text-gray-500">GBP</div>
+              </div>
+            </div>
           </div>
         </div>
 
