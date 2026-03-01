@@ -1,8 +1,17 @@
 import { NextRequest, NextResponse } from "next/server";
 import Stripe from "stripe";
+import { createClient } from "@supabase/supabase-js";
 
 const TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN!;
 const ADMIN_CHAT_ID = process.env.TELEGRAM_ADMIN_CHAT_ID;
+const VIP_CHANNEL_ID = process.env.TELEGRAM_VIP_CHANNEL_ID;
+
+function getSupabase() {
+  return createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!
+  );
+}
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
   apiVersion: "2026-01-28.clover",
@@ -321,8 +330,97 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({ ok: true });
       }
 
-      // /start command
+      // /start command - check for linking deep link
       if (text.startsWith("/start")) {
+        // Check for account linking: /start link_CODE_PROFILEID
+        const linkMatch = text.match(/^\/start link_([A-Z0-9]+)_(.+)$/);
+        
+        if (linkMatch) {
+          const [, linkCode, profileId] = linkMatch;
+          const supabase = getSupabase();
+          
+          // Verify the user has a subscription
+          const { data: subscription } = await supabase
+            .from('subscriptions')
+            .select('status')
+            .eq('profile_id', profileId)
+            .in('status', ['active', 'trialing'])
+            .single();
+          
+          if (!subscription) {
+            await sendMessage(
+              chatId,
+              `❌ <b>Link Failed</b>\n\n` +
+              `No active subscription found for this account.\n\n` +
+              `Please subscribe first at tipstersking.com`,
+            );
+            return NextResponse.json({ ok: true });
+          }
+          
+          // Link the Telegram account
+          const { error: linkError } = await supabase
+            .from('subscriber_profiles')
+            .upsert({
+              profile_id: profileId,
+              telegram_user_id: userId,
+              telegram_username: username || null,
+              subscribed_at: new Date().toISOString(),
+            }, { onConflict: 'profile_id' });
+          
+          if (linkError) {
+            console.error('Telegram link error:', linkError);
+            await sendMessage(
+              chatId,
+              `❌ <b>Link Failed</b>\n\n` +
+              `Something went wrong. Please try again or contact support.`,
+            );
+            return NextResponse.json({ ok: true });
+          }
+          
+          // Generate VIP channel invite
+          let inviteMessage = '';
+          if (VIP_CHANNEL_ID) {
+            try {
+              const inviteRes = await fetch(
+                `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/createChatInviteLink`,
+                {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({
+                    chat_id: VIP_CHANNEL_ID,
+                    member_limit: 1,
+                    expire_date: Math.floor(Date.now() / 1000) + 86400,
+                  }),
+                }
+              );
+              const inviteData = await inviteRes.json();
+              if (inviteData.ok) {
+                inviteMessage = `\n\n🔗 <b>Join VIP Channel:</b>\n${inviteData.result.invite_link}`;
+              }
+            } catch (e) {
+              console.error('Failed to create invite:', e);
+            }
+          }
+          
+          await sendMessage(
+            chatId,
+            `✅ <b>Account Linked!</b>\n\n` +
+            `Welcome to TipstersKing VIP, ${firstName}! 👑\n\n` +
+            `Your Telegram is now connected. You'll receive real-time tips!` +
+            inviteMessage,
+            {
+              reply_markup: {
+                inline_keyboard: [
+                  [{ text: "🏠 Home", callback_data: "show_plans" }],
+                ],
+              },
+            }
+          );
+          
+          return NextResponse.json({ ok: true });
+        }
+        
+        // Regular /start command
         await sendMessage(
           chatId,
           `👑 <b>Welcome to TipstersKing, ${firstName}!</b>\n\n` +
