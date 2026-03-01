@@ -1,0 +1,24 @@
+{
+  "crons": [
+    {
+      "path": "/api/cron/fetch-matches",
+      "schedule": "0 2 * * *"
+    },
+    {
+      "path": "/api/cron/update-status",
+      "schedule": "0 * * * *"
+    },
+    {
+      "path": "/api/cron/update-results",
+      "schedule": "*/30 * * * *"
+    },
+    {
+      "path": "/api/cron/commissions",
+      "schedule": "50 23 28-31 * *"
+    },
+    {
+      "path": "/api/cron/free-channel",
+      "schedule": "*/5 * * * *"
+    }
+  ]
+}

@@ -1,0 +1,82 @@
+{
+  "apply": {
+    "title": "Conviértete en Tipster",
+    "subtitle": "Únete a TipstersKing y monetiza tu experiencia en fútbol",
+    "benefits": {
+      "title": "¿Por qué unirse?",
+      "benefit1": "Los 10 mejores tipsters comparten el 70% de los ingresos mensuales",
+      "benefit2": "Sin costos iniciales - gratis para unirse",
+      "benefit3": "Usa cualquier alias - permanece anónimo públicamente",
+      "benefit4": "Sin exclusividad - da tips donde quieras",
+      "benefit5": "Flujo de trabajo simple basado en Telegram"
+    },
+    "requirements": {
+      "title": "Requisitos",
+      "req1": "Historial de ROI positivo (preferido)",
+      "req2": "Compromiso de 30+ tips por mes",
+      "req3": "Enviar tips 60+ minutos antes del inicio",
+      "req4": "Cuotas solo entre 1.30 y 10.00",
+      "req5": "Ser profesional y consistente"
+    },
+    "form": {
+      "alias": "Nombre de Usuario / Alias",
+      "aliasHint": "Esto es lo que verán los suscriptores. ¡Elige sabiamente!",
+      "aliasPlaceholder": "ej., FutbolWizard",
+      "email": "Correo Electrónico",
+      "emailHint": "Para notificaciones de cuenta y pagos",
+      "leagues": "¿Qué ligas sigues?",
+      "leaguesHint": "Selecciona todas las que apliquen",
+      "experience": "Cuéntanos sobre tu experiencia",
+      "experienceHint": "Tu historial, track record, estilo de apuestas, etc.",
+      "experiencePlaceholder": "He estado analizando fútbol por X años...",
+      "trackRecord": "Enlace a historial existente (opcional)",
+      "trackRecordHint": "Canal de Telegram, Twitter, hoja de cálculo, etc.",
+      "trackRecordPlaceholder": "https://t.me/tucanal",
+      "telegram": "Tu Usuario de Telegram",
+      "telegramHint": "Te contactaremos aquí si eres aprobado",
+      "telegramPlaceholder": "@tuusuario",
+      "submit": "Enviar Solicitud",
+      "submitting": "Enviando...",
+      "success": "¡Solicitud enviada! La revisaremos y te responderemos en 48 horas.",
+      "error": "Error al enviar. Por favor intenta de nuevo."
+    },
+    "validation": {
+      "aliasRequired": "El alias es requerido",
+      "aliasLength": "El alias debe tener 3-50 caracteres",
+      "aliasFormat": "El alias solo puede contener letras, números y guiones bajos",
+      "emailRequired": "El correo es requerido",
+      "emailInvalid": "Correo electrónico inválido",
+      "leaguesRequired": "Selecciona al menos una liga",
+      "experienceRequired": "Cuéntanos sobre tu experiencia",
+      "experienceLength": "La experiencia debe tener al menos 50 caracteres",
+      "telegramRequired": "El usuario de Telegram es requerido",
+      "telegramFormat": "Debe empezar con @ (ej., @usuario)"
+    }
+  },
+  "profile": {
+    "title": "Perfil de {alias}",
+    "member": "Miembro desde {date}",
+    "stats": "Estadísticas de Rendimiento",
+    "roi90d": "ROI de 90 Días",
+    "winRate": "% Aciertos",
+    "totalTips": "Tips Totales",
+    "avgOdds": "Cuota Promedio",
+    "history": "Historial Mensual",
+    "month": "Mes",
+    "tips": "Tips",
+    "roi": "ROI",
+    "rank": "Posición",
+    "earned": "Ganado",
+    "noHistory": "Sin historial aún",
+    "recentTips": "Tips Recientes",
+    "viewAll": "Ver Todos los Tips"
+  },
+  "badges": {
+    "established": "Establecido",
+    "establishedDesc": "200+ tips y 6+ meses activo",
+    "rising": "En Ascenso",
+    "risingDesc": "Construyendo historial",
+    "inconsistent": "Inconsistente",
+    "inconsistentDesc": "Alta variación en resultados recientes"
+  }
+}

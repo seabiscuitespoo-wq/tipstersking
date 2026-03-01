@@ -1,0 +1,82 @@
+{
+  "apply": {
+    "title": "Become a Tipster",
+    "subtitle": "Join TipstersKing and monetize your football expertise",
+    "benefits": {
+      "title": "Why Join?",
+      "benefit1": "Top 10 tipsters share 70% of monthly revenue",
+      "benefit2": "No upfront costs - free to join",
+      "benefit3": "Use any alias - stay anonymous publicly",
+      "benefit4": "No exclusivity - tip anywhere you want",
+      "benefit5": "Simple Telegram-based workflow"
+    },
+    "requirements": {
+      "title": "Requirements",
+      "req1": "Positive ROI track record (preferred)",
+      "req2": "Commit to 30+ tips per month",
+      "req3": "Submit tips 60+ minutes before kickoff",
+      "req4": "Odds between 1.30 and 10.00 only",
+      "req5": "Be professional and consistent"
+    },
+    "form": {
+      "alias": "Display Name / Alias",
+      "aliasHint": "This is what subscribers will see. Choose wisely!",
+      "aliasPlaceholder": "e.g., FootballWizard",
+      "email": "Email Address",
+      "emailHint": "For account and payout notifications",
+      "leagues": "Which leagues do you follow?",
+      "leaguesHint": "Select all that apply",
+      "experience": "Tell us about your experience",
+      "experienceHint": "Your background, track record, betting style, etc.",
+      "experiencePlaceholder": "I've been analyzing football for X years...",
+      "trackRecord": "Link to existing track record (optional)",
+      "trackRecordHint": "Telegram channel, Twitter, spreadsheet, etc.",
+      "trackRecordPlaceholder": "https://t.me/yourchannel",
+      "telegram": "Your Telegram Username",
+      "telegramHint": "We'll contact you here if approved",
+      "telegramPlaceholder": "@yourusername",
+      "submit": "Submit Application",
+      "submitting": "Submitting...",
+      "success": "Application submitted! We'll review it and get back to you within 48 hours.",
+      "error": "Failed to submit. Please try again."
+    },
+    "validation": {
+      "aliasRequired": "Alias is required",
+      "aliasLength": "Alias must be 3-50 characters",
+      "aliasFormat": "Alias can only contain letters, numbers, and underscores",
+      "emailRequired": "Email is required",
+      "emailInvalid": "Invalid email address",
+      "leaguesRequired": "Select at least one league",
+      "experienceRequired": "Tell us about your experience",
+      "experienceLength": "Experience must be at least 50 characters",
+      "telegramRequired": "Telegram username is required",
+      "telegramFormat": "Must start with @ (e.g., @username)"
+    }
+  },
+  "profile": {
+    "title": "{alias}'s Profile",
+    "member": "Member since {date}",
+    "stats": "Performance Stats",
+    "roi90d": "90-Day ROI",
+    "winRate": "Win Rate",
+    "totalTips": "Total Tips",
+    "avgOdds": "Avg Odds",
+    "history": "Monthly History",
+    "month": "Month",
+    "tips": "Tips",
+    "roi": "ROI",
+    "rank": "Rank",
+    "earned": "Earned",
+    "noHistory": "No history yet",
+    "recentTips": "Recent Tips",
+    "viewAll": "View All Tips"
+  },
+  "badges": {
+    "established": "Established",
+    "establishedDesc": "200+ tips and 6+ months active",
+    "rising": "Rising",
+    "risingDesc": "Building track record",
+    "inconsistent": "Inconsistent",
+    "inconsistentDesc": "High variance in recent results"
+  }
+}
