@@ -3,7 +3,7 @@ import Stripe from "stripe";
 import { getCountryFromHeaders, getPriceFromCountry, type Currency } from "@/lib/pricing";
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
-  apiVersion: "2026-01-28.clover",
+  apiVersion: "2024-06-20",
 });
 
 export async function POST(request: NextRequest) {
