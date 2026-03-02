@@ -86,20 +86,33 @@ function SuccessContent() {
               </Link>
             </div>
 
+            {/* Mobile QR code */}
+            <div className="mt-6 p-4 bg-white/5 rounded-xl text-center">
+              <p className="text-white font-semibold mb-3">📱 On desktop? Scan with your phone:</p>
+              <div className="bg-white p-3 rounded-xl inline-block mb-3">
+                <img 
+                  src={`https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=https://t.me/+V8eVUct3p3ZhYTlk`}
+                  alt="Telegram QR Code"
+                  width={150}
+                  height={150}
+                  className="block"
+                />
+              </div>
+              <p className="text-gray-400 text-sm">
+                Open your phone camera and scan the QR code
+              </p>
+            </div>
+
             {/* Desktop/no Telegram help */}
-            <div className="mt-6 p-4 bg-white/5 rounded-xl text-left">
+            <div className="mt-4 p-4 bg-white/5 rounded-xl text-left">
               <p className="text-gray-400 text-sm mb-2">
                 <strong className="text-white">Don't have Telegram?</strong>
               </p>
               <ul className="text-gray-400 text-sm space-y-1">
                 <li>1. Download Telegram: <a href="https://telegram.org/apps" target="_blank" rel="noopener noreferrer" className="text-purple-400 hover:underline">telegram.org/apps</a></li>
                 <li>2. Create an account</li>
-                <li>3. Click the join button above (or use link below)</li>
+                <li>3. Scan QR code above or click join button</li>
               </ul>
-              <div className="mt-3 p-2 bg-white/5 rounded text-center">
-                <p className="text-gray-500 text-xs mb-1">Save this invite link:</p>
-                <code className="text-purple-400 text-xs break-all select-all">https://t.me/+V8eVUct3p3ZhYTlk</code>
-              </div>
             </div>
 
             {sessionId && (
