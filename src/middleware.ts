@@ -17,7 +17,8 @@ export const config = {
   // - API routes (/api/*)
   // - Static files (/_next/*, /favicon.ico, etc.)
   // - Public assets (/images/*, etc.)
+  // - Success page (Stripe redirect)
   matcher: [
-    '/((?!api|_next|_vercel|.*\\..*).*)',
+    '/((?!api|_next|_vercel|success|.*\\..*).*)',
   ],
 };
