@@ -369,7 +369,6 @@ CREATE POLICY "Free queue service only"
 CREATE OR REPLACE VIEW active_tipsters AS
 SELECT 
   p.id as profile_id,
-  p.email,
   p.username,
   tp.id as tipster_id,
   tp.alias,

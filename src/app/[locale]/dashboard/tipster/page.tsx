@@ -99,7 +99,8 @@ const MARKET_TYPES = [
 ];
 
 // Mock profile ID - in real app this comes from auth
-const MOCK_PROFILE_ID = 'mock-profile-id';
+// TODO: Replace with actual auth user ID
+const MOCK_PROFILE_ID = '0af31417-869d-48c8-ac35-f095717c5006';
 
 export default function TipsterDashboardPage() {
   const t = useTranslations('dashboard.tipster');

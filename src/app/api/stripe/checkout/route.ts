@@ -8,7 +8,17 @@ const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
 
 export async function POST(request: NextRequest) {
   try {
-    const body = await request.json();
+    let body: { customerEmail?: string; currency?: string } = {};
+    
+    try {
+      const text = await request.text();
+      if (text) {
+        body = JSON.parse(text);
+      }
+    } catch {
+      // Empty body is OK, we'll use geo-detection
+    }
+    
     const { customerEmail, currency: requestedCurrency } = body;
 
     // Determine currency from request or geo-detection

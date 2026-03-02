@@ -77,8 +77,8 @@
       "home": "Home Win",
       "draw": "Draw",
       "away": "Away Win",
-      "over_2.5": "Over 2.5 Goals",
-      "under_2.5": "Under 2.5 Goals",
+      "over_2_5": "Over 2.5 Goals",
+      "under_2_5": "Under 2.5 Goals",
       "btts_yes": "Both Teams to Score - Yes",
       "btts_no": "Both Teams to Score - No"
     }

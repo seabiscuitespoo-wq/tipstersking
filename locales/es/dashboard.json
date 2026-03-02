@@ -77,8 +77,8 @@
       "home": "Victoria Local",
       "draw": "Empate",
       "away": "Victoria Visitante",
-      "over_2.5": "Más de 2.5 Goles",
-      "under_2.5": "Menos de 2.5 Goles",
+      "over_2_5": "Más de 2.5 Goles",
+      "under_2_5": "Menos de 2.5 Goles",
       "btts_yes": "Ambos Marcan - Sí",
       "btts_no": "Ambos Marcan - No"
     }
