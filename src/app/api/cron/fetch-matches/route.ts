@@ -26,7 +26,8 @@ export async function GET(request: Request) {
       success: true,
       inserted: result.inserted,
       updated: result.updated,
-      debug: { hasApiKey, ...result.debug },
+      debug: { hasApiKey, fnDebug: result.debug ?? 'undefined' },
+      version: 'v3',
       timestamp: new Date().toISOString()
     });
   } catch (error) {
