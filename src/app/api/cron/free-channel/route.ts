@@ -17,11 +17,11 @@ export async function GET(request: Request) {
   }
 
   try {
-    const result = await publishToFreeChannel();
+    const published = await publishToFreeChannel();
     
     return NextResponse.json({
       success: true,
-      ...result,
+      published,
       timestamp: new Date().toISOString()
     });
   } catch (error) {

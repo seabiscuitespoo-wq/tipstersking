@@ -716,13 +716,8 @@ export async function removeUserFromVipChannel(telegramUserId: number) {
 // Free Channel Publisher (called by cron)
 // ============================================================
 
-export async function publishToFreeChannel(): Promise<{ published: number; debug?: unknown }> {
+export async function publishToFreeChannel(): Promise<number> {
   const now = new Date();
-  const debug: Record<string, unknown> = { 
-    now: now.toISOString(),
-    freeChannelId: FREE_CHANNEL_ID || 'NOT_SET',
-    botTokenSet: !!BOT_TOKEN
-  };
 
   // Get tips scheduled for free channel that haven't been published
   // Using simple query to avoid PostgREST nested join issues
@@ -734,10 +729,7 @@ export async function publishToFreeChannel(): Promise<{ published: number; debug
     .eq('skipped', false)
     .limit(10);
 
-  debug.queueLength = queue?.length ?? 0;
-  debug.error = error?.message;
-
-  if (error || !queue?.length) return { published: 0, debug };
+  if (error || !queue?.length) return 0;
 
   let published = 0;
 
@@ -751,7 +743,7 @@ export async function publishToFreeChannel(): Promise<{ published: number; debug
         .single();
 
       if (tipError) {
-        debug.tipError = tipError.message;
+        console.error('Failed to fetch tip:', tipError.message);
         continue;
       }
 
@@ -771,7 +763,7 @@ export async function publishToFreeChannel(): Promise<{ published: number; debug
         .single();
 
       if (matchError) {
-        debug.matchError = matchError.message;
+        console.error('Failed to fetch match:', matchError.message);
         continue;
       }
 
@@ -828,10 +820,9 @@ export async function publishToFreeChannel(): Promise<{ published: number; debug
 
       published++;
     } catch (err) {
-      debug.loopError = String(err);
       console.error('Failed to publish to free channel:', err);
     }
   }
 
-  return { published, debug };
+  return published;
 }
