@@ -42,7 +42,8 @@ async function supabaseRest<T>(table: string, query: string = ''): Promise<{ dat
     const data = await response.json();
     return { data, error: null };
   } catch (err) {
-    return { data: null, error: err as Error };
+    const error = err as Error;
+    return { data: null, error: new Error(`${error.name}: ${error.message} | cause: ${(error as any).cause}`) };
   }
 }
 
