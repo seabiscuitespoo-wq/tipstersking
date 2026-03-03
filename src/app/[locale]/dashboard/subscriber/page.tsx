@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useTranslations } from 'next-intl';
 import { Link } from '@/i18n/navigation';
-import { LocaleSwitcher } from '@/components/LocaleSwitcher';
+import { DashboardHeader } from '@/components/DashboardHeader';
 
 interface SubscriberStatus {
   profile: {
@@ -162,22 +162,7 @@ export default function SubscriberDashboardPage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">
-      {/* Header */}
-      <header className="border-b border-white/10">
-        <div className="container mx-auto px-6 py-4">
-          <nav className="flex justify-between items-center">
-            <Link href="/" className="text-2xl font-bold text-white">
-              👑 TipstersKing
-            </Link>
-            <div className="flex items-center space-x-6">
-              <Link href="/leaderboard" className="text-gray-300 hover:text-white transition">
-                {tNav('leaderboard')}
-              </Link>
-              <LocaleSwitcher />
-            </div>
-          </nav>
-        </div>
-      </header>
+      <DashboardHeader title="Subscriber" />
 
       <main className="container mx-auto px-6 py-8">
         <div className="max-w-4xl mx-auto">

@@ -1,24 +1,64 @@
-// ============================================================
-// TipstersKing Middleware
-// Handles i18n locale detection + routing
-// ============================================================
+import { createClient } from '@supabase/supabase-js';
+import { NextResponse } from 'next/server';
+import type { NextRequest } from 'next/server';
 
-import createMiddleware from 'next-intl/middleware';
-import { locales, defaultLocale } from './i18n/config';
+// Routes that require authentication
+const protectedRoutes = ['/dashboard', '/apply'];
 
-export default createMiddleware({
-  locales,
-  defaultLocale,
-  localePrefix: 'as-needed', // Only show prefix for non-default locales
-});
+// Routes that should redirect to dashboard if already logged in
+const authRoutes = ['/login', '/register'];
+
+export async function middleware(request: NextRequest) {
+  const { pathname } = request.nextUrl;
+  
+  // Remove locale prefix for checking
+  const pathWithoutLocale = pathname.replace(/^\/(en|es)/, '');
+  
+  // Check if route needs protection
+  const isProtectedRoute = protectedRoutes.some(route => 
+    pathWithoutLocale.startsWith(route)
+  );
+  const isAuthRoute = authRoutes.some(route => 
+    pathWithoutLocale.startsWith(route)
+  );
+
+  if (!isProtectedRoute && !isAuthRoute) {
+    return NextResponse.next();
+  }
+
+  // Get session from cookie
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+  
+  if (!supabaseUrl || !supabaseAnonKey) {
+    return NextResponse.next();
+  }
+
+  // Check for auth token in cookies
+  const authToken = request.cookies.get('sb-access-token')?.value ||
+                    request.cookies.get('sb-grajiwygrrxcdbekywju-auth-token')?.value;
+
+  const isAuthenticated = !!authToken;
+
+  // Redirect logic
+  if (isProtectedRoute && !isAuthenticated) {
+    const locale = pathname.match(/^\/(en|es)/)?.[1] || 'en';
+    return NextResponse.redirect(new URL(`/${locale}/login`, request.url));
+  }
+
+  if (isAuthRoute && isAuthenticated) {
+    const locale = pathname.match(/^\/(en|es)/)?.[1] || 'en';
+    return NextResponse.redirect(new URL(`/${locale}/dashboard/subscriber`, request.url));
+  }
+
+  return NextResponse.next();
+}
 
 export const config = {
-  // Match all pathnames except:
-  // - API routes (/api/*)
-  // - Static files (/_next/*, /favicon.ico, etc.)
-  // - Public assets (/images/*, etc.)
-  // - Success page (Stripe redirect)
   matcher: [
-    '/((?!api|_next|_vercel|success|.*\\..*).*)',
+    '/(en|es)/dashboard/:path*',
+    '/(en|es)/apply/:path*',
+    '/(en|es)/login',
+    '/(en|es)/register',
   ],
 };
