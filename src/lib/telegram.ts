@@ -721,30 +721,10 @@ export async function publishToFreeChannel(): Promise<{ published: number; debug
   const debug: Record<string, unknown> = { now: now.toISOString() };
 
   // Get tips scheduled for free channel that haven't been published
+  // Using simple query to avoid PostgREST nested join issues
   const { data: queue, error } = await db()
     .from('free_channel_queue')
-    .select(`
-      id,
-      tip_id,
-      scheduled_at,
-      tips (
-        id,
-        market_type,
-        pick,
-        odds,
-        tip_timestamp,
-        profile_id,
-        match_id,
-        matches (
-          id,
-          home_team,
-          away_team,
-          kickoff_time,
-          status,
-          leagues (name)
-        )
-      )
-    `)
+    .select('id, tip_id, scheduled_at')
     .lte('scheduled_at', now.toISOString())
     .is('published_at', null)
     .eq('skipped', false)
@@ -758,8 +738,27 @@ export async function publishToFreeChannel(): Promise<{ published: number; debug
   let published = 0;
 
   for (const item of queue) {
-    const tip = item.tips as any;
-    const match = tip?.matches;
+    // Fetch tip with match data separately to avoid nested join issues
+    const { data: tip } = await db()
+      .from('tips')
+      .select('id, market_type, pick, odds, tip_timestamp, profile_id, match_id')
+      .eq('id', item.tip_id)
+      .single();
+
+    if (!tip) {
+      await db()
+        .from('free_channel_queue')
+        .update({ skipped: true, skip_reason: 'Tip not found' })
+        .eq('id', item.id);
+      continue;
+    }
+
+    // Fetch match separately
+    const { data: match } = await db()
+      .from('matches')
+      .select('id, home_team, away_team, kickoff_time, status, leagues(name)')
+      .eq('id', tip.match_id)
+      .single();
 
     // Skip if match already kicked off
     if (!match || match.status !== 'upcoming') {
@@ -783,7 +782,7 @@ export async function publishToFreeChannel(): Promise<{ published: number; debug
     const stats = await get90DayRoi(tip.profile_id);
     const badge = await getTipsterBadge(tip.profile_id);
     
-    // Fetch alias separately to avoid PostgREST relationship issues
+    // Fetch alias
     const { data: tipsterData } = await db()
       .from('tipster_profiles')
       .select('alias')
