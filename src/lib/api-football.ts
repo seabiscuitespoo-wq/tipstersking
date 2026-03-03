@@ -49,16 +49,29 @@ async function apiFootballFetch(endpoint: string): Promise<ApiFootballResponse> 
  * Called by /api/cron/fetch-matches
  */
 export async function fetchUpcomingMatches(): Promise<{ inserted: number; updated: number; debug?: unknown }> {
-  const debug: Record<string, unknown> = { apiKeySet: !!API_FOOTBALL_KEY };
+  const debug: Record<string, unknown> = { 
+    apiKeySet: !!API_FOOTBALL_KEY,
+    supabaseUrl: process.env.NEXT_PUBLIC_SUPABASE_URL?.substring(0, 30) + '...',
+    hasServiceKey: !!process.env.SUPABASE_SERVICE_ROLE_KEY,
+  };
   
   // Get active league IDs
-  const { data: leagues, error: leagueError } = await db()
-    .from('leagues')
-    .select('api_football_id, id')
-    .eq('active', true);
-
-  debug.leagueCount = leagues?.length ?? 0;
-  debug.leagueError = leagueError?.message;
+  let leagues: { api_football_id: number; id: number }[] | null = null;
+  let leagueError: { message?: string } | null = null;
+  
+  try {
+    const result = await db()
+      .from('leagues')
+      .select('api_football_id, id')
+      .eq('active', true);
+    leagues = result.data;
+    leagueError = result.error;
+    debug.leagueCount = leagues?.length ?? 0;
+    debug.leagueError = leagueError?.message;
+  } catch (err) {
+    debug.leagueException = String(err);
+    return { inserted: 0, updated: 0, debug };
+  }
 
   if (leagueError || !leagues?.length) {
     console.error('Failed to fetch active leagues:', leagueError);
