@@ -2,23 +2,35 @@
 
 import { useState } from 'react';
 import { useTranslations } from 'next-intl';
-import { Link } from '@/i18n/navigation';
+import { Link, useRouter } from '@/i18n/navigation';
+import { supabase } from '@/lib/supabase';
 
 export default function LoginPage() {
   const t = useTranslations('auth');
-  const tNav = useTranslations('nav');
+  const router = useRouter();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
+    setError('');
     
-    // TODO: Implement Supabase auth
     try {
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      // const { error } = await supabase.auth.signInWithPassword({ email, password });
+      const { error: authError } = await supabase.auth.signInWithPassword({ 
+        email, 
+        password 
+      });
+      
+      if (authError) {
+        setError(authError.message);
+      } else {
+        router.push('/dashboard/subscriber');
+      }
+    } catch (err) {
+      setError('An unexpected error occurred');
     } finally {
       setLoading(false);
     }
@@ -37,6 +49,11 @@ export default function LoginPage() {
           <h1 className="text-2xl font-bold text-white mb-6 text-center">{t('login')}</h1>
           
           <form onSubmit={handleSubmit} className="space-y-4">
+            {error && (
+              <div className="bg-red-500/10 border border-red-500/20 rounded-lg p-3 text-red-400 text-sm">
+                {error}
+              </div>
+            )}
             <div>
               <label className="block text-gray-400 text-sm mb-2">{t('email')}</label>
               <input
