@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { useTranslations } from 'next-intl';
 import { Link } from '@/i18n/navigation';
 import { DashboardHeader } from '@/components/DashboardHeader';
+import { PageLoader } from '@/components/Spinner';
 
 interface SubscriberStatus {
   profile: {
@@ -185,7 +186,12 @@ export default function SubscriberDashboardPage() {
 
           {/* Loading */}
           {loading ? (
-            <div className="text-center py-12 text-gray-400">Loading...</div>
+            <div className="flex justify-center py-12">
+              <div className="text-center">
+                <div className="w-10 h-10 mx-auto animate-spin rounded-full border-4 border-green-500 border-t-transparent" />
+                <p className="mt-4 text-gray-400">Loading...</p>
+              </div>
+            </div>
           ) : status ? (
             <div className="grid md:grid-cols-2 gap-6">
               {/* Subscription Card */}

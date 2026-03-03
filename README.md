@@ -1,93 +1,155 @@
-# 🎯 TipsterHub
+# 👑 TipstersKing
 
-Monetisoi vedonlyöntitipsisi sekunneissa. Luo maksullinen Telegram/Discord-yhteisö, seuraa tilastojasi automaattisesti.
+A Netflix-style marketplace for football betting tips. Subscribers pay €9.99/month for real-time access to all tips from verified tipsters. Tipsters earn from a monthly revenue pool based on their ROI ranking.
 
-## Ominaisuudet
+## 🚀 Live Demo
 
-- 📊 **Automaattinen ROI-seuranta** - Kirjaa vedot, tilastot lasketaan automaattisesti
-- 📱 **Telegram & Discord** - Automaattinen jäsenhallinta
-- 💳 **Stripe-maksut** - Tilaukset suoraan tilillesi
-- 🎨 **Landing-sivu** - Valmiit templatet tipsteri-sivuille
-- 🔔 **Signal Alerts** - Lähetä vedot yhteisöön yhdellä klikkauksella
+**Production:** https://tipster-saas-mu.vercel.app
 
-## Käynnistys (kehitys)
+## ✨ Features
 
-```bash
-# 1. Asenna riippuvuudet
-npm install
+### For Subscribers
+- 📱 Real-time tips via Telegram VIP channel
+- 📊 Leaderboard with 90-day ROI tracking
+- 💳 €9.99/mo subscription (EUR/USD/GBP)
+- 🆓 Free channel with 2-hour delayed tips
 
-# 2. Kopioi environment-tiedosto
-cp .env.example .env.local
+### For Tipsters
+- 🎯 Submit tips via web dashboard
+- 📈 Track ROI and win rate
+- 💰 Earn from top 10 monthly commission pool
+- 🔗 Stripe Connect Express payouts
 
-# 3. Täytä .env.local oikeilla arvoilla
+### Anti-Manipulation
+- ⏰ 60-minute deadline before kickoff
+- 🔒 Tips are immutable (no edit/delete)
+- 📊 Flat 1-unit ROI calculation
+- ✅ Server-side timestamp validation
 
-# 4. Käynnistä kehityspalvelin
-npm run dev
-```
+## 🛠️ Tech Stack
 
-Avaa [http://localhost:3000](http://localhost:3000)
+| Layer | Technology |
+|-------|------------|
+| Frontend | Next.js 15, React, Tailwind CSS |
+| Backend | Next.js API Routes, Vercel Serverless |
+| Database | Supabase (PostgreSQL) |
+| Auth | Supabase Auth |
+| Payments | Stripe + Connect Express |
+| Messaging | Telegram Bot API |
+| Data | API-Football |
+| Hosting | Vercel Pro |
 
-## Setup
-
-### 1. Supabase (tietokanta)
-
-1. Luo tili: https://supabase.com
-2. Luo uusi projekti
-3. Kopioi URL ja anon key → `.env.local`
-
-### 2. Stripe (maksut)
-
-1. Luo tili: https://stripe.com
-2. Kopioi API-avaimet → `.env.local`
-3. Luo tuote + hinta Stripe Dashboardissa
-4. Aseta webhook endpoint: `https://yourdomain.com/api/stripe/webhook`
-
-### 3. Telegram Bot
-
-1. Avaa @BotFather Telegramissa
-2. Lähetä `/newbot` ja seuraa ohjeita
-3. Kopioi bot token → `.env.local`
-4. Lisää botti kanavallesi adminiksi
-
-## Tech Stack
-
-- **Frontend:** Next.js 16, React, Tailwind CSS
-- **Backend:** Next.js API Routes
-- **Database:** Supabase (PostgreSQL)
-- **Payments:** Stripe
-- **Hosting:** Vercel (suositus)
-
-## Kansiorakenne
+## 📁 Project Structure
 
 ```
 src/
 ├── app/
-│   ├── page.tsx           # Landing page
-│   ├── login/             # Kirjautuminen
-│   ├── register/          # Rekisteröinti
-│   ├── dashboard/         # Tipsterin hallintapaneeli
-│   └── api/
-│       ├── stripe/        # Stripe checkout + webhook
-│       └── telegram/      # Telegram bot API
+│   ├── [locale]/          # i18n routes (en/es)
+│   │   ├── dashboard/     # User dashboards
+│   │   ├── leaderboard/   # ROI rankings
+│   │   ├── login/         # Auth pages
+│   │   └── pricing/       # Subscription
+│   ├── api/
+│   │   ├── cron/          # Scheduled jobs
+│   │   ├── stripe/        # Webhooks
+│   │   ├── telegram/      # Bot webhook
+│   │   └── tipster/       # Tip submission
+│   └── auth/callback/     # OAuth callback
+├── components/            # Reusable UI
+├── lib/
+│   ├── api-football.ts    # Match data
+│   ├── telegram.ts        # Bot + channels
+│   ├── tips.ts            # Core tip logic
+│   └── supabase.ts        # DB client
+└── messages/              # i18n translations
 ```
 
-## Deployment (Vercel)
+## ⚙️ Environment Variables
+
+```env
+# Supabase
+NEXT_PUBLIC_SUPABASE_URL=
+NEXT_PUBLIC_SUPABASE_ANON_KEY=
+SUPABASE_SERVICE_ROLE_KEY=
+
+# Stripe
+STRIPE_SECRET_KEY=
+NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=
+STRIPE_WEBHOOK_SECRET=
+STRIPE_PRICE_EUR=
+STRIPE_PRICE_USD=
+STRIPE_PRICE_GBP=
+
+# Telegram
+TELEGRAM_BOT_TOKEN=
+TELEGRAM_BOT_USERNAME=
+TELEGRAM_VIP_CHANNEL_ID=
+TELEGRAM_FREE_CHANNEL_ID=
+TELEGRAM_ADMIN_CHAT_ID=
+
+# API-Football
+API_FOOTBALL_KEY=
+
+# Cron
+CRON_SECRET=
+```
+
+## 🔄 Cron Jobs
+
+| Job | Schedule | Description |
+|-----|----------|-------------|
+| fetch-matches | Daily 02:00 | Fetch upcoming matches |
+| update-results | Every 30min | Update scores & tip results |
+| free-channel | Every 5min | Publish delayed tips |
+| commissions | Monthly 1st | Calculate tipster payouts |
+
+## 🚀 Getting Started
 
 ```bash
-# 1. Asenna Vercel CLI
-npm i -g vercel
+# Install dependencies
+npm install
 
-# 2. Deploytaa
-vercel
+# Run development server
+npm run dev
 
-# 3. Lisää environment-muuttujat Vercel dashboardissa
+# Build for production
+npm run build
 ```
 
-## Hinta
+## 📊 Database Schema
 
-- **29€/kk** + 2% transaktiomaksu
-- Ei rajoituksia tilaajamäärässä
+Key tables:
+- `profiles` - User accounts
+- `tipster_profiles` - Tipster info & stats
+- `matches` - Football fixtures
+- `tips` - Submitted predictions
+- `subscriptions` - Stripe subscriptions
+- `monthly_commissions` - Tipster payouts
+
+## 🌍 Internationalization
+
+Supported languages:
+- 🇬🇧 English (en)
+- 🇪🇸 Spanish (es)
+
+## 📈 Supported Leagues
+
+1. La Liga
+2. Premier League
+3. UEFA Champions League
+4. UEFA Europa League
+5. Bundesliga
+6. Serie A
+7. Ligue 1
+8. Eredivisie
+9. Primeira Liga
+10. Brasileirão
+11. MLS
+
+## 📄 License
+
+MIT
 
 ---
 
-Built with 🐋 by Bubba
+Built with ❤️ by TipstersKing

@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { useTranslations } from 'next-intl';
 import { Link } from '@/i18n/navigation';
 import { DashboardHeader } from '@/components/DashboardHeader';
+import { Spinner } from '@/components/Spinner';
 
 interface Match {
   id: number;
@@ -356,7 +357,12 @@ export default function TipsterDashboardPage() {
 
           {/* Loading */}
           {loading ? (
-            <div className="text-center py-12 text-gray-400">Loading...</div>
+            <div className="flex justify-center py-12">
+              <div className="text-center">
+                <div className="w-10 h-10 mx-auto animate-spin rounded-full border-4 border-amber-500 border-t-transparent" />
+                <p className="mt-4 text-gray-400">Loading...</p>
+              </div>
+            </div>
           ) : (
             <>
               {/* Matches Tab */}
