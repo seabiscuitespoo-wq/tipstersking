@@ -17,17 +17,17 @@ export async function GET(request: Request) {
   }
 
   try {
-    const published = await publishToFreeChannel();
+    const result = await publishToFreeChannel();
     
     return NextResponse.json({
       success: true,
-      published,
+      ...result,
       timestamp: new Date().toISOString()
     });
   } catch (error) {
     console.error('Cron free-channel failed:', error);
     return NextResponse.json(
-      { success: false, error: String(error) },
+      { success: false, error: String(error), stack: (error as Error)?.stack },
       { status: 500 }
     );
   }

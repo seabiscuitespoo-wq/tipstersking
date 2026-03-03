@@ -716,8 +716,9 @@ export async function removeUserFromVipChannel(telegramUserId: number) {
 // Free Channel Publisher (called by cron)
 // ============================================================
 
-export async function publishToFreeChannel() {
+export async function publishToFreeChannel(): Promise<{ published: number; debug?: unknown }> {
   const now = new Date();
+  const debug: Record<string, unknown> = { now: now.toISOString() };
 
   // Get tips scheduled for free channel that haven't been published
   const { data: queue, error } = await db()
@@ -752,7 +753,10 @@ export async function publishToFreeChannel() {
     .eq('skipped', false)
     .limit(10);
 
-  if (error || !queue?.length) return 0;
+  debug.queueLength = queue?.length ?? 0;
+  debug.error = error?.message;
+
+  if (error || !queue?.length) return { published: 0, debug };
 
   let published = 0;
 
@@ -811,5 +815,5 @@ export async function publishToFreeChannel() {
     }
   }
 
-  return published;
+  return { published, debug };
 }
