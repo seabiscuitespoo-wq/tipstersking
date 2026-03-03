@@ -718,7 +718,11 @@ export async function removeUserFromVipChannel(telegramUserId: number) {
 
 export async function publishToFreeChannel(): Promise<{ published: number; debug?: unknown }> {
   const now = new Date();
-  const debug: Record<string, unknown> = { now: now.toISOString() };
+  const debug: Record<string, unknown> = { 
+    now: now.toISOString(),
+    freeChannelId: FREE_CHANNEL_ID || 'NOT_SET',
+    botTokenSet: !!BOT_TOKEN
+  };
 
   // Get tips scheduled for free channel that haven't been published
   // Using simple query to avoid PostgREST nested join issues
