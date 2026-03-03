@@ -738,73 +738,83 @@ export async function publishToFreeChannel(): Promise<{ published: number; debug
   let published = 0;
 
   for (const item of queue) {
-    // Fetch tip with match data separately to avoid nested join issues
-    const { data: tip } = await db()
-      .from('tips')
-      .select('id, market_type, pick, odds, tip_timestamp, profile_id, match_id')
-      .eq('id', item.tip_id)
-      .single();
-
-    if (!tip) {
-      await db()
-        .from('free_channel_queue')
-        .update({ skipped: true, skip_reason: 'Tip not found' })
-        .eq('id', item.id);
-      continue;
-    }
-
-    // Fetch match separately
-    const { data: match } = await db()
-      .from('matches')
-      .select('id, home_team, away_team, kickoff_time, status, leagues(name)')
-      .eq('id', tip.match_id)
-      .single();
-
-    // Skip if match already kicked off
-    if (!match || match.status !== 'upcoming') {
-      await db()
-        .from('free_channel_queue')
-        .update({ skipped: true, skip_reason: 'Match already started' })
-        .eq('id', item.id);
-      continue;
-    }
-
-    const kickoff = new Date(match.kickoff_time);
-    if (kickoff <= now) {
-      await db()
-        .from('free_channel_queue')
-        .update({ skipped: true, skip_reason: 'Past kickoff time' })
-        .eq('id', item.id);
-      continue;
-    }
-
-    // Get tipster stats and alias
-    const stats = await get90DayRoi(tip.profile_id);
-    const badge = await getTipsterBadge(tip.profile_id);
-    
-    // Fetch alias
-    const { data: tipsterData } = await db()
-      .from('tipster_profiles')
-      .select('alias')
-      .eq('profile_id', tip.profile_id)
-      .single();
-    const alias = tipsterData?.alias || 'Anonymous';
-
-    // Format and publish
-    const message = formatTipMessage({
-      alias,
-      badge,
-      roi: stats?.roi_pct || 0,
-      homeTeam: match.home_team,
-      awayTeam: match.away_team,
-      league: match.leagues?.name || '',
-      kickoff,
-      pick: formatPick(tip.market_type, tip.pick),
-      odds: tip.odds,
-      timestamp: new Date(tip.tip_timestamp)
-    });
-
     try {
+      // Fetch tip with match data separately to avoid nested join issues
+      const { data: tip, error: tipError } = await db()
+        .from('tips')
+        .select('id, market_type, pick, odds, tip_timestamp, profile_id, match_id')
+        .eq('id', item.tip_id)
+        .single();
+
+      if (tipError) {
+        debug.tipError = tipError.message;
+        continue;
+      }
+
+      if (!tip) {
+        await db()
+          .from('free_channel_queue')
+          .update({ skipped: true, skip_reason: 'Tip not found' })
+          .eq('id', item.id);
+        continue;
+      }
+
+      // Fetch match separately
+      const { data: match, error: matchError } = await db()
+        .from('matches')
+        .select('id, home_team, away_team, kickoff_time, status, leagues(name)')
+        .eq('id', tip.match_id)
+        .single();
+
+      if (matchError) {
+        debug.matchError = matchError.message;
+        continue;
+      }
+
+      // Skip if match already kicked off
+      if (!match || match.status !== 'upcoming') {
+        await db()
+          .from('free_channel_queue')
+          .update({ skipped: true, skip_reason: 'Match already started' })
+          .eq('id', item.id);
+        continue;
+      }
+
+      const kickoff = new Date(match.kickoff_time);
+      if (kickoff <= now) {
+        await db()
+          .from('free_channel_queue')
+          .update({ skipped: true, skip_reason: 'Past kickoff time' })
+          .eq('id', item.id);
+        continue;
+      }
+
+      // Get tipster stats and alias
+      const stats = await get90DayRoi(tip.profile_id);
+      const badge = await getTipsterBadge(tip.profile_id);
+      
+      // Fetch alias
+      const { data: tipsterData } = await db()
+        .from('tipster_profiles')
+        .select('alias')
+        .eq('profile_id', tip.profile_id)
+        .single();
+      const alias = tipsterData?.alias || 'Anonymous';
+
+      // Format and publish
+      const message = formatTipMessage({
+        alias,
+        badge,
+        roi: stats?.roi_pct || 0,
+        homeTeam: match.home_team,
+        awayTeam: match.away_team,
+        league: match.leagues?.name || '',
+        kickoff,
+        pick: formatPick(tip.market_type, tip.pick),
+        odds: tip.odds,
+        timestamp: new Date(tip.tip_timestamp)
+      });
+
       await sendMessage(FREE_CHANNEL_ID, message + '\n\n🆓 <i>Free channel - 2h delay</i>');
       
       await db()
@@ -814,6 +824,7 @@ export async function publishToFreeChannel(): Promise<{ published: number; debug
 
       published++;
     } catch (err) {
+      debug.loopError = String(err);
       console.error('Failed to publish to free channel:', err);
     }
   }
