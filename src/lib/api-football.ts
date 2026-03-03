@@ -48,16 +48,21 @@ async function apiFootballFetch(endpoint: string): Promise<ApiFootballResponse> 
  * Fetch next 48h of matches from active leagues.
  * Called by /api/cron/fetch-matches
  */
-export async function fetchUpcomingMatches(): Promise<{ inserted: number; updated: number }> {
+export async function fetchUpcomingMatches(): Promise<{ inserted: number; updated: number; debug?: unknown }> {
+  const debug: Record<string, unknown> = { apiKeySet: !!API_FOOTBALL_KEY };
+  
   // Get active league IDs
   const { data: leagues, error: leagueError } = await db()
     .from('leagues')
     .select('api_football_id, id')
     .eq('active', true);
 
+  debug.leagueCount = leagues?.length ?? 0;
+  debug.leagueError = leagueError?.message;
+
   if (leagueError || !leagues?.length) {
     console.error('Failed to fetch active leagues:', leagueError);
-    return { inserted: 0, updated: 0 };
+    return { inserted: 0, updated: 0, debug };
   }
 
   // Create league ID map for quick lookup
@@ -75,12 +80,21 @@ export async function fetchUpcomingMatches(): Promise<{ inserted: number; update
   let inserted = 0;
   let updated = 0;
 
+  debug.dates = dates;
+  debug.fetchResults = [];
+
   for (const date of dates) {
     try {
       const data = await apiFootballFetch(`/fixtures?date=${date}`);
       
+      const fetchResult: Record<string, unknown> = { 
+        date, 
+        total: data.response?.length ?? 0
+      };
+      
       if (!data.response?.length) {
         console.log(`No fixtures found for ${date}`);
+        (debug.fetchResults as unknown[]).push(fetchResult);
         continue;
       }
 
@@ -88,6 +102,9 @@ export async function fetchUpcomingMatches(): Promise<{ inserted: number; update
       const relevantFixtures = data.response.filter(
         (f: ApiFootballFixture) => activeLeagueIds.has(f.league.id)
       );
+
+      fetchResult.relevant = relevantFixtures.length;
+      (debug.fetchResults as unknown[]).push(fetchResult);
 
       console.log(`${date}: ${data.response.length} total, ${relevantFixtures.length} in active leagues`);
 
@@ -132,7 +149,7 @@ export async function fetchUpcomingMatches(): Promise<{ inserted: number; update
   }
 
   console.log(`Fetched matches: ${inserted} inserted/updated`);
-  return { inserted, updated };
+  return { inserted, updated, debug };
 }
 
 // ============================================================

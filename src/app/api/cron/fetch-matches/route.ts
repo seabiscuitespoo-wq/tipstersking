@@ -17,17 +17,21 @@ export async function GET(request: Request) {
   }
 
   try {
+    // Debug: Check if API key is set
+    const hasApiKey = !!process.env.API_FOOTBALL_KEY;
+    
     const result = await fetchUpcomingMatches();
     
     return NextResponse.json({
       success: true,
       ...result,
+      debug: { hasApiKey },
       timestamp: new Date().toISOString()
     });
   } catch (error) {
     console.error('Cron fetch-matches failed:', error);
     return NextResponse.json(
-      { success: false, error: String(error) },
+      { success: false, error: String(error), stack: (error as Error)?.stack },
       { status: 500 }
     );
   }
