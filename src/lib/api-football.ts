@@ -22,6 +22,30 @@ function db() {
   return _db;
 }
 
+// Direct REST fetch for Supabase (workaround for Vercel serverless)
+async function supabaseRest<T>(table: string, query: string = ''): Promise<{ data: T | null; error: Error | null }> {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!url || !key) return { data: null, error: new Error('Missing Supabase env vars') };
+  
+  try {
+    const response = await fetch(`${url}/rest/v1/${table}${query}`, {
+      headers: {
+        'apikey': key,
+        'Authorization': `Bearer ${key}`,
+        'Content-Type': 'application/json',
+      },
+    });
+    if (!response.ok) {
+      return { data: null, error: new Error(`Supabase REST error: ${response.status}`) };
+    }
+    const data = await response.json();
+    return { data, error: null };
+  } catch (err) {
+    return { data: null, error: err as Error };
+  }
+}
+
 // ============================================================
 // API-Football HTTP Client
 // ============================================================
@@ -55,23 +79,14 @@ export async function fetchUpcomingMatches(): Promise<{ inserted: number; update
     hasServiceKey: !!process.env.SUPABASE_SERVICE_ROLE_KEY,
   };
   
-  // Get active league IDs
-  let leagues: { api_football_id: number; id: number }[] | null = null;
-  let leagueError: { message?: string } | null = null;
+  // Get active league IDs (using REST API for Vercel compatibility)
+  const { data: leagues, error: leagueError } = await supabaseRest<{ api_football_id: number; id: number }[]>(
+    'leagues',
+    '?select=api_football_id,id&active=eq.true'
+  );
   
-  try {
-    const result = await db()
-      .from('leagues')
-      .select('api_football_id, id')
-      .eq('active', true);
-    leagues = result.data;
-    leagueError = result.error;
-    debug.leagueCount = leagues?.length ?? 0;
-    debug.leagueError = leagueError?.message;
-  } catch (err) {
-    debug.leagueException = String(err);
-    return { inserted: 0, updated: 0, debug };
-  }
+  debug.leagueCount = leagues?.length ?? 0;
+  debug.leagueError = leagueError?.message;
 
   if (leagueError || !leagues?.length) {
     console.error('Failed to fetch active leagues:', leagueError);
