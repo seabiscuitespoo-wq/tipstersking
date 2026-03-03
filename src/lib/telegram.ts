@@ -742,9 +742,6 @@ export async function publishToFreeChannel(): Promise<{ published: number; debug
           kickoff_time,
           status,
           leagues (name)
-        ),
-        profiles:profile_id (
-          tipster_profiles!inner (alias)
         )
       )
     `)
@@ -782,10 +779,17 @@ export async function publishToFreeChannel(): Promise<{ published: number; debug
       continue;
     }
 
-    // Get tipster stats
+    // Get tipster stats and alias
     const stats = await get90DayRoi(tip.profile_id);
     const badge = await getTipsterBadge(tip.profile_id);
-    const alias = tip.profiles?.tipster_profiles?.alias || 'Anonymous';
+    
+    // Fetch alias separately to avoid PostgREST relationship issues
+    const { data: tipsterData } = await db()
+      .from('tipster_profiles')
+      .select('alias')
+      .eq('profile_id', tip.profile_id)
+      .single();
+    const alias = tipsterData?.alias || 'Anonymous';
 
     // Format and publish
     const message = formatTipMessage({
