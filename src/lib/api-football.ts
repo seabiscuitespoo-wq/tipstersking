@@ -62,55 +62,72 @@ export async function fetchUpcomingMatches(): Promise<{ inserted: number; update
 
   // Create league ID map for quick lookup
   const leagueMap = new Map(leagues.map((l: { api_football_id: number; id: number }) => [l.api_football_id, l.id]));
-  const leagueIds = leagues.map((l: { api_football_id: number }) => l.api_football_id).join('-');
+  const activeLeagueIds = new Set(leagues.map((l: { api_football_id: number }) => l.api_football_id));
 
-  // Fetch fixtures for next 100 games across active leagues
-  // API-Football returns matches sorted by date
-  const data = await apiFootballFetch(`/fixtures?league=${leagueIds}&next=100`);
-
-  if (!data.response?.length) {
-    console.log('No upcoming fixtures found');
-    return { inserted: 0, updated: 0 };
+  // Fetch fixtures for next 3 days (to stay within free tier limits)
+  // API-Football free tier: 100 requests/day
+  const dates: string[] = [];
+  for (let i = 0; i < 3; i++) {
+    const date = new Date(Date.now() + i * 24 * 60 * 60 * 1000);
+    dates.push(date.toISOString().split('T')[0]);
   }
 
   let inserted = 0;
   let updated = 0;
 
-  for (const fixture of data.response) {
-    const leagueDbId = leagueMap.get(fixture.league.id);
-    if (!leagueDbId) continue;
+  for (const date of dates) {
+    try {
+      const data = await apiFootballFetch(`/fixtures?date=${date}`);
+      
+      if (!data.response?.length) {
+        console.log(`No fixtures found for ${date}`);
+        continue;
+      }
 
-    const matchData = {
-      api_football_id: fixture.fixture.id,
-      league_id: leagueDbId,
-      home_team: fixture.teams.home.name,
-      away_team: fixture.teams.away.name,
-      home_team_logo: fixture.teams.home.logo,
-      away_team_logo: fixture.teams.away.logo,
-      kickoff_time: fixture.fixture.date,
-      // deadline is auto-calculated by trigger
-      status: mapApiStatus(fixture.fixture.status.short),
-      home_score: fixture.goals.home,
-      away_score: fixture.goals.away,
-      fetched_at: new Date().toISOString(),
-    };
+      // Filter to only our active leagues
+      const relevantFixtures = data.response.filter(
+        (f: ApiFootballFixture) => activeLeagueIds.has(f.league.id)
+      );
 
-    // Upsert: insert or update if exists
-    const { error, data: result } = await db()
-      .from('matches')
-      .upsert(matchData, { 
-        onConflict: 'api_football_id',
-        ignoreDuplicates: false 
-      })
-      .select('id')
-      .single();
+      console.log(`${date}: ${data.response.length} total, ${relevantFixtures.length} in active leagues`);
 
-    if (error) {
-      console.error('Failed to upsert match:', fixture.fixture.id, error);
-    } else {
-      // Check if it was insert or update
-      // (rough heuristic - if fetched_at is close to now, it's an update)
-      inserted++;
+      for (const fixture of relevantFixtures) {
+        const leagueDbId = leagueMap.get(fixture.league.id);
+        if (!leagueDbId) continue;
+
+        const matchData = {
+          api_football_id: fixture.fixture.id,
+          league_id: leagueDbId,
+          home_team: fixture.teams.home.name,
+          away_team: fixture.teams.away.name,
+          home_team_logo: fixture.teams.home.logo,
+          away_team_logo: fixture.teams.away.logo,
+          kickoff_time: fixture.fixture.date,
+          // deadline is auto-calculated by trigger
+          status: mapApiStatus(fixture.fixture.status.short),
+          home_score: fixture.goals.home,
+          away_score: fixture.goals.away,
+          fetched_at: new Date().toISOString(),
+        };
+
+        // Upsert: insert or update if exists
+        const { error } = await db()
+          .from('matches')
+          .upsert(matchData, { 
+            onConflict: 'api_football_id',
+            ignoreDuplicates: false 
+          })
+          .select('id')
+          .single();
+
+        if (error) {
+          console.error('Failed to upsert match:', fixture.fixture.id, error);
+        } else {
+          inserted++;
+        }
+      }
+    } catch (err) {
+      console.error(`Failed to fetch fixtures for ${date}:`, err);
     }
   }
 
