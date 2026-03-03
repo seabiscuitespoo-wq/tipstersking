@@ -24,8 +24,9 @@ export async function GET(request: Request) {
     
     return NextResponse.json({
       success: true,
-      ...result,
-      debug: { hasApiKey },
+      inserted: result.inserted,
+      updated: result.updated,
+      debug: { hasApiKey, ...result.debug },
       timestamp: new Date().toISOString()
     });
   } catch (error) {
