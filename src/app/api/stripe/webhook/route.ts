@@ -169,6 +169,37 @@ async function handleCheckoutCompleted(session: Stripe.Checkout.Session) {
       onConflict: 'profile_id'
     });
 
+  // CRITICAL: Create subscription record directly here
+  // (subscription.created event may fire before profile_id is set)
+  if (subscriptionId) {
+    const stripe = getStripe();
+    const subscription = await stripe.subscriptions.retrieve(subscriptionId);
+    
+    const priceItem = subscription.items.data[0];
+    const priceAmount = priceItem?.price?.unit_amount || 999;
+    const currency = priceItem?.price?.currency || 'eur';
+    const sub = subscription as any;
+    const periodStart = sub.current_period_start || sub.billing_cycle_anchor;
+    const periodEnd = sub.current_period_end;
+
+    await db()
+      .from('subscriptions')
+      .upsert({
+        profile_id: profileId,
+        stripe_customer_id: customerId,
+        stripe_subscription_id: subscriptionId,
+        status: subscription.status === 'trialing' ? 'trialing' : 'active',
+        price_amount: priceAmount,
+        currency,
+        current_period_start: periodStart ? new Date(periodStart * 1000).toISOString() : null,
+        current_period_end: periodEnd ? new Date(periodEnd * 1000).toISOString() : null,
+      }, {
+        onConflict: 'stripe_subscription_id'
+      });
+    
+    console.log('Subscription record created:', subscriptionId, 'for profile:', profileId);
+  }
+
   // Send welcome email with setup link
   // The setup link includes a one-time token for password creation
   const setupToken = crypto.randomUUID();
