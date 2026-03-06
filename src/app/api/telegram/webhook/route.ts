@@ -542,14 +542,11 @@ export async function POST(request: NextRequest) {
         
         const supabase = getSupabase();
         
-        // Find profile by email
-        const { data: profile } = await supabase
-          .from('profiles')
-          .select('id')
-          .eq('email', email)
-          .single();
+        // Find user by email in auth.users
+        const { data: usersData, error: usersError } = await supabase.auth.admin.listUsers();
+        const user = usersData?.users?.find((u: any) => u.email?.toLowerCase() === email);
         
-        if (!profile) {
+        if (!user) {
           await sendMessage(
             chatId,
             `❌ <b>Email not found</b>\n\n` +
@@ -559,6 +556,8 @@ export async function POST(request: NextRequest) {
           );
           return NextResponse.json({ ok: true });
         }
+        
+        const profile = { id: user.id };
         
         // Check subscription
         const { data: subscription } = await supabase
