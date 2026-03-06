@@ -7,7 +7,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import Stripe from 'stripe';
-import { addUserToVipChannel } from '@/lib/telegram';
+import crypto from 'crypto';
 
 function getSupabaseAdmin() {
   return createClient(
