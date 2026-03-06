@@ -64,101 +64,23 @@ export async function GET(request: NextRequest) {
       let profileId = (customer as any).metadata?.profile_id;
       console.log('Step 2: profileId from metadata:', profileId);
       
-      // If webhook hasn't processed yet, create user now
+      // If webhook hasn't processed yet, we'll create user in POST (when password is set)
+      // For now, just return that we need password setup
       if (!profileId) {
-        console.log('Step 3: No profileId, checking existing users');
-        // Check if user exists by email
-        const { data: existingUsers, error: listError } = await supabase.auth.admin.listUsers();
-        if (listError) {
-          console.error('Step 3 ERROR listing users:', listError);
-          return NextResponse.json({ error: 'Failed to list users', details: listError.message }, { status: 500 });
-        }
-        const existingUser = existingUsers?.users?.find((u: any) => u.email === email);
-        console.log('Step 4: Existing user found:', !!existingUser);
+        console.log('Step 3: No profileId yet, user will be created on password setup');
         
-        if (existingUser) {
-          profileId = existingUser.id;
-          console.log('Step 5a: Using existing user:', profileId);
-        } else {
-          // Create new user
-          console.log('Step 5b: Creating new user for:', email);
-          const tempPassword = crypto.randomUUID();
-          const { data: newUser, error: createError } = await supabase.auth.admin.createUser({
-            email,
-            password: tempPassword,
-            email_confirm: true,
-            user_metadata: {
-              needs_password_setup: true,
-              stripe_customer_id: customerId
-            }
-          });
-          
-          if (createError || !newUser?.user) {
-            console.error('Step 5b ERROR creating user:', createError);
-            return NextResponse.json({ error: 'Failed to create account', details: createError?.message }, { status: 500 });
-          }
-          
-          profileId = newUser.user.id;
-          console.log('Step 6: User created:', profileId);
-          
-          // Create profile
-          console.log('Step 7: Creating profile');
-          const { error: profileError } = await supabase.from('profiles').upsert({
-            id: profileId,
-            created_at: new Date().toISOString()
-          }, { onConflict: 'id' });
-          
-          if (profileError) {
-            console.error('Step 7 ERROR creating profile:', profileError);
-          }
-        }
-        
-        // Update Stripe customer with profile_id
-        await stripe.customers.update(customerId, {
-          metadata: { profile_id: profileId }
+        // Return early - user will be created when they set password
+        return NextResponse.json({
+          valid: true,
+          email,
+          profileId: null, // Will be created on POST
+          needsPassword: true,
+          customerId,
+          subscriptionId,
         });
-        
-        // Create subscriber_profiles
-        await supabase.from('subscriber_profiles').upsert({
-          profile_id: profileId,
-          subscribed_at: new Date().toISOString()
-        }, { onConflict: 'profile_id' });
       }
       
-      // ALWAYS create subscription record (moved outside the if block)
-      if (subscriptionId) {
-        // Check if subscription already exists
-        const { data: existingSub } = await supabase
-          .from('subscriptions')
-          .select('id')
-          .eq('stripe_subscription_id', subscriptionId)
-          .single();
-        
-        if (!existingSub) {
-          const subscription = await stripe.subscriptions.retrieve(subscriptionId);
-          const priceItem = subscription.items.data[0];
-          const sub = subscription as any;
-          
-          const { error: subError } = await supabase.from('subscriptions').upsert({
-            profile_id: profileId,
-            stripe_customer_id: customerId,
-            stripe_subscription_id: subscriptionId,
-            status: subscription.status === 'trialing' ? 'trialing' : 'active',
-            price_amount: priceItem?.price?.unit_amount || 999,
-            currency: priceItem?.price?.currency || 'eur',
-            current_period_start: sub.current_period_start ? new Date(sub.current_period_start * 1000).toISOString() : null,
-            current_period_end: sub.current_period_end ? new Date(sub.current_period_end * 1000).toISOString() : null,
-          }, { onConflict: 'stripe_subscription_id' });
-          
-          if (subError) {
-            console.error('Failed to create subscription:', subError);
-          } else {
-            console.log('Subscription created:', subscriptionId);
-          }
-        }
-      }
-      
-      // Check if account already has password set
+      // profileId exists - check if password is already set
       const { data: userData } = await supabase.auth.admin.getUserById(profileId);
       const needsPassword = userData?.user?.user_metadata?.needs_password_setup === true;
       
@@ -248,12 +170,79 @@ export async function POST(request: NextRequest) {
       const stripe = getStripe();
       const session = await stripe.checkout.sessions.retrieve(sessionId);
       email = session.customer_email || session.customer_details?.email || '';
+      const customerId = session.customer as string;
+      const subscriptionId = session.subscription as string;
       
-      const customer = await stripe.customers.retrieve(session.customer as string);
+      const customer = await stripe.customers.retrieve(customerId);
       profileId = (customer as any).metadata?.profile_id;
       
+      // If no profile yet, create user now with the provided password
       if (!profileId) {
-        return NextResponse.json({ error: 'Profile not found' }, { status: 400 });
+        console.log('POST: Creating new user for:', email);
+        
+        const { data: newUser, error: createError } = await supabase.auth.admin.createUser({
+          email,
+          password, // Use the password they just entered!
+          email_confirm: true,
+          user_metadata: {
+            needs_password_setup: false,
+            stripe_customer_id: customerId,
+            username: username || null
+          }
+        });
+        
+        if (createError || !newUser?.user) {
+          console.error('POST: Failed to create user:', createError);
+          return NextResponse.json({ error: 'Failed to create account', details: createError?.message }, { status: 500 });
+        }
+        
+        profileId = newUser.user.id;
+        console.log('POST: User created:', profileId);
+        
+        // Update Stripe with profile_id
+        await stripe.customers.update(customerId, {
+          metadata: { profile_id: profileId }
+        });
+        
+        // Create profile record
+        await supabase.from('profiles').upsert({
+          id: profileId,
+          created_at: new Date().toISOString()
+        }, { onConflict: 'id' });
+        
+        // Create subscriber_profiles
+        await supabase.from('subscriber_profiles').upsert({
+          profile_id: profileId,
+          subscribed_at: new Date().toISOString()
+        }, { onConflict: 'profile_id' });
+        
+        // Create subscription record
+        if (subscriptionId) {
+          const subscription = await stripe.subscriptions.retrieve(subscriptionId);
+          const priceItem = subscription.items.data[0];
+          const sub = subscription as any;
+          
+          await supabase.from('subscriptions').upsert({
+            profile_id: profileId,
+            stripe_customer_id: customerId,
+            stripe_subscription_id: subscriptionId,
+            status: subscription.status === 'trialing' ? 'trialing' : 'active',
+            price_amount: priceItem?.price?.unit_amount || 999,
+            currency: priceItem?.price?.currency || 'eur',
+            current_period_start: sub.current_period_start ? new Date(sub.current_period_start * 1000).toISOString() : null,
+            current_period_end: sub.current_period_end ? new Date(sub.current_period_end * 1000).toISOString() : null,
+          }, { onConflict: 'stripe_subscription_id' });
+          
+          console.log('POST: Subscription created:', subscriptionId);
+        }
+        
+        // Return success - user is fully set up!
+        return NextResponse.json({
+          success: true,
+          message: 'Account created',
+          email,
+          profileId,
+        });
       }
     } else if (token) {
       const { data: tokenData } = await supabase

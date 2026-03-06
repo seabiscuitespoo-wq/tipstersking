@@ -7,11 +7,13 @@ import Link from "next/link";
 interface SetupData {
   valid: boolean;
   email: string;
-  profileId: string;
+  profileId: string | null;
   needsPassword: boolean;
   subscriptionStatus?: string;
   telegramLinked?: boolean;
   telegramUsername?: string;
+  customerId?: string;
+  subscriptionId?: string;
 }
 
 function SuccessContent() {
