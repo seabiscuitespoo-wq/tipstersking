@@ -107,14 +107,23 @@ export async function GET(request: NextRequest) {
           profile_id: profileId,
           subscribed_at: new Date().toISOString()
         }, { onConflict: 'profile_id' });
+      }
+      
+      // ALWAYS create subscription record (moved outside the if block)
+      if (subscriptionId) {
+        // Check if subscription already exists
+        const { data: existingSub } = await supabase
+          .from('subscriptions')
+          .select('id')
+          .eq('stripe_subscription_id', subscriptionId)
+          .single();
         
-        // Create subscription record
-        if (subscriptionId) {
+        if (!existingSub) {
           const subscription = await stripe.subscriptions.retrieve(subscriptionId);
           const priceItem = subscription.items.data[0];
           const sub = subscription as any;
           
-          await supabase.from('subscriptions').upsert({
+          const { error: subError } = await supabase.from('subscriptions').upsert({
             profile_id: profileId,
             stripe_customer_id: customerId,
             stripe_subscription_id: subscriptionId,
@@ -124,6 +133,12 @@ export async function GET(request: NextRequest) {
             current_period_start: sub.current_period_start ? new Date(sub.current_period_start * 1000).toISOString() : null,
             current_period_end: sub.current_period_end ? new Date(sub.current_period_end * 1000).toISOString() : null,
           }, { onConflict: 'stripe_subscription_id' });
+          
+          if (subError) {
+            console.error('Failed to create subscription:', subError);
+          } else {
+            console.log('Subscription created:', subscriptionId);
+          }
         }
       }
       
