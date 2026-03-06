@@ -332,7 +332,91 @@ export async function POST(request: NextRequest) {
 
       // /start command - check for linking deep link
       if (text.startsWith("/start")) {
-        // Check for account linking: /start link_CODE_PROFILEID
+        // Check for verify deep link: /start verify_PROFILEID
+        const verifyMatch = text.match(/^\/start verify_([a-f0-9-]+)$/i);
+        
+        if (verifyMatch) {
+          const profileId = verifyMatch[1];
+          const supabase = getSupabase();
+          
+          // Verify the user has a subscription
+          const { data: subscription } = await supabase
+            .from('subscriptions')
+            .select('status')
+            .eq('profile_id', profileId)
+            .in('status', ['active', 'trialing'])
+            .single();
+          
+          if (!subscription) {
+            await sendMessage(
+              chatId,
+              `❌ <b>Verification Failed</b>\n\n` +
+              `No active subscription found for this account.\n\n` +
+              `Please subscribe first at tipstersking.com/pricing`,
+            );
+            return NextResponse.json({ ok: true });
+          }
+          
+          // Link the Telegram account
+          const { error: linkError } = await supabase
+            .from('subscriber_profiles')
+            .upsert({
+              profile_id: profileId,
+              telegram_user_id: userId,
+              telegram_username: username || null,
+              verified_at: new Date().toISOString(),
+            }, { onConflict: 'profile_id' });
+          
+          if (linkError) {
+            console.error('Telegram verify error:', linkError);
+            await sendMessage(
+              chatId,
+              `❌ <b>Verification Failed</b>\n\n` +
+              `Something went wrong. Please try again or contact support.`,
+            );
+            return NextResponse.json({ ok: true });
+          }
+          
+          // Generate VIP channel invite
+          let inviteLink = '';
+          if (VIP_CHANNEL_ID) {
+            try {
+              const inviteRes = await fetch(
+                `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/createChatInviteLink`,
+                {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({
+                    chat_id: VIP_CHANNEL_ID,
+                    member_limit: 1,
+                    expire_date: Math.floor(Date.now() / 1000) + 86400,
+                  }),
+                }
+              );
+              const inviteData = await inviteRes.json();
+              if (inviteData.ok) {
+                inviteLink = inviteData.result.invite_link;
+              }
+            } catch (e) {
+              console.error('Failed to create invite:', e);
+            }
+          }
+          
+          await sendMessage(
+            chatId,
+            `🎉 <b>Verification Complete!</b>\n\n` +
+            `Welcome to TipstersKing VIP, ${firstName}! 👑\n\n` +
+            `Your Telegram is now linked to your account.\n\n` +
+            (inviteLink 
+              ? `👇 <b>Join the VIP Channel:</b>\n${inviteLink}\n\n⚠️ This link expires in 24 hours.\n\n`
+              : '') +
+            `🔔 Turn on notifications so you never miss a tip!`,
+          );
+          
+          return NextResponse.json({ ok: true });
+        }
+        
+        // Check for legacy linking: /start link_CODE_PROFILEID
         const linkMatch = text.match(/^\/start link_([A-Z0-9]+)_(.+)$/);
         
         if (linkMatch) {
@@ -441,6 +525,104 @@ export async function POST(request: NextRequest) {
             },
           }
         );
+      }
+
+      // /verify command - verify by email
+      else if (text.startsWith("/verify ")) {
+        const email = text.replace("/verify ", "").trim().toLowerCase();
+        
+        if (!email || !email.includes("@")) {
+          await sendMessage(
+            chatId,
+            `⚠️ <b>Invalid email</b>\n\n` +
+            `Usage: <code>/verify your@email.com</code>`,
+          );
+          return NextResponse.json({ ok: true });
+        }
+        
+        const supabase = getSupabase();
+        
+        // Find profile by email
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('id')
+          .eq('email', email)
+          .single();
+        
+        if (!profile) {
+          await sendMessage(
+            chatId,
+            `❌ <b>Email not found</b>\n\n` +
+            `No account found with this email.\n\n` +
+            `Make sure you've completed checkout at:\n` +
+            `https://tipstersking.com/pricing`,
+          );
+          return NextResponse.json({ ok: true });
+        }
+        
+        // Check subscription
+        const { data: subscription } = await supabase
+          .from('subscriptions')
+          .select('status')
+          .eq('profile_id', profile.id)
+          .in('status', ['active', 'trialing'])
+          .single();
+        
+        if (!subscription) {
+          await sendMessage(
+            chatId,
+            `❌ <b>No active subscription</b>\n\n` +
+            `Your account exists but no active subscription found.\n\n` +
+            `Subscribe at: https://tipstersking.com/pricing`,
+          );
+          return NextResponse.json({ ok: true });
+        }
+        
+        // Link account
+        await supabase
+          .from('subscriber_profiles')
+          .upsert({
+            profile_id: profile.id,
+            telegram_user_id: userId,
+            telegram_username: username || null,
+            verified_at: new Date().toISOString(),
+          }, { onConflict: 'profile_id' });
+        
+        // Generate VIP invite
+        let inviteLink = '';
+        if (VIP_CHANNEL_ID) {
+          try {
+            const inviteRes = await fetch(
+              `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/createChatInviteLink`,
+              {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  chat_id: VIP_CHANNEL_ID,
+                  member_limit: 1,
+                  expire_date: Math.floor(Date.now() / 1000) + 86400,
+                }),
+              }
+            );
+            const inviteData = await inviteRes.json();
+            if (inviteData.ok) {
+              inviteLink = inviteData.result.invite_link;
+            }
+          } catch (e) {
+            console.error('Invite error:', e);
+          }
+        }
+        
+        await sendMessage(
+          chatId,
+          `🎉 <b>Verified!</b>\n\n` +
+          `Welcome to TipstersKing VIP, ${firstName}! 👑\n\n` +
+          (inviteLink 
+            ? `👇 <b>Join VIP Channel:</b>\n${inviteLink}\n\n`
+            : '') +
+          `🔔 Turn on notifications!`,
+        );
+        return NextResponse.json({ ok: true });
       }
 
       // /subscribe command
