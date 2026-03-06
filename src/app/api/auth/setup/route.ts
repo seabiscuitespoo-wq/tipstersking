@@ -180,20 +180,49 @@ export async function POST(request: NextRequest) {
       if (!profileId) {
         console.log('POST: Creating new user for:', email);
         
-        const { data: newUser, error: createError } = await supabase.auth.admin.createUser({
+        // Try signUp first (works without service role issues)
+        const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
           email,
-          password, // Use the password they just entered!
-          email_confirm: true,
-          user_metadata: {
-            needs_password_setup: false,
-            stripe_customer_id: customerId,
-            username: username || null
+          password,
+          options: {
+            data: {
+              stripe_customer_id: customerId,
+              username: username || null
+            },
+            emailRedirectTo: `${process.env.NEXT_PUBLIC_URL}/dashboard`
           }
         });
         
-        if (createError || !newUser?.user) {
-          console.error('POST: Failed to create user:', createError);
-          return NextResponse.json({ error: 'Failed to create account', details: createError?.message }, { status: 500 });
+        if (signUpError) {
+          console.error('POST: SignUp failed:', signUpError);
+          
+          // If user exists, try to get their ID
+          if (signUpError.message?.includes('already registered')) {
+            const { data: existingUsers } = await supabase.auth.admin.listUsers();
+            const existingUser = existingUsers?.users?.find((u: any) => u.email === email);
+            if (existingUser) {
+              profileId = existingUser.id;
+              console.log('POST: Found existing user:', profileId);
+            } else {
+              return NextResponse.json({ error: 'Failed to create account', details: signUpError.message }, { status: 500 });
+            }
+          } else {
+            return NextResponse.json({ error: 'Failed to create account', details: signUpError.message }, { status: 500 });
+          }
+        }
+        
+        if (!profileId && signUpData?.user) {
+          profileId = signUpData.user.id;
+          console.log('POST: User created via signUp:', profileId);
+          
+          // Auto-confirm the user since they paid
+          await supabase.auth.admin.updateUserById(profileId, {
+            email_confirm: true
+          });
+        }
+        
+        if (!profileId) {
+          return NextResponse.json({ error: 'Failed to create account' }, { status: 500 });
         }
         
         profileId = newUser.user.id;
