@@ -26,8 +26,12 @@ export const dynamic = 'force-dynamic';
 
 // GET: Validate session_id or setup token
 export async function GET(request: NextRequest) {
+  console.log('Setup GET called');
+  
   const sessionId = request.nextUrl.searchParams.get('session_id');
   const token = request.nextUrl.searchParams.get('token');
+  
+  console.log('Params:', { sessionId: sessionId?.slice(0, 20), token: token?.slice(0, 10) });
   
   const supabase = getSupabaseAdmin();
   
@@ -151,9 +155,12 @@ export async function GET(request: NextRequest) {
         telegramUsername: subscriberProfile?.telegram_username || null,
       });
       
-    } catch (error) {
+    } catch (error: any) {
       console.error('Session validation error:', error);
-      return NextResponse.json({ error: 'Session validation failed' }, { status: 400 });
+      return NextResponse.json({ 
+        error: 'Session validation failed', 
+        details: error?.message || String(error)
+      }, { status: 400 });
     }
   }
   
