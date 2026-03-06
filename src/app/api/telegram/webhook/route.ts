@@ -542,11 +542,22 @@ export async function POST(request: NextRequest) {
         
         const supabase = getSupabase();
         
+        console.log('VERIFY: Looking for email:', email);
+        
         // Find user by email in auth.users
         const { data: usersData, error: usersError } = await supabase.auth.admin.listUsers();
+        
+        console.log('VERIFY: listUsers result:', { 
+          userCount: usersData?.users?.length, 
+          error: usersError?.message 
+        });
+        
         const user = usersData?.users?.find((u: any) => u.email?.toLowerCase() === email);
         
+        console.log('VERIFY: Found user:', user?.id, user?.email);
+        
         if (!user) {
+          console.log('VERIFY: User not found for email:', email);
           await sendMessage(
             chatId,
             `❌ <b>Email not found</b>\n\n` +
