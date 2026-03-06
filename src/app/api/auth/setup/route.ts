@@ -59,19 +59,29 @@ export async function GET(request: NextRequest) {
       }
       
       // Get profile_id from Stripe customer metadata
+      console.log('Step 1: Getting customer', customerId);
       const customer = await stripe.customers.retrieve(customerId);
       let profileId = (customer as any).metadata?.profile_id;
+      console.log('Step 2: profileId from metadata:', profileId);
       
       // If webhook hasn't processed yet, create user now
       if (!profileId) {
+        console.log('Step 3: No profileId, checking existing users');
         // Check if user exists by email
-        const { data: existingUsers } = await supabase.auth.admin.listUsers();
+        const { data: existingUsers, error: listError } = await supabase.auth.admin.listUsers();
+        if (listError) {
+          console.error('Step 3 ERROR listing users:', listError);
+          return NextResponse.json({ error: 'Failed to list users', details: listError.message }, { status: 500 });
+        }
         const existingUser = existingUsers?.users?.find((u: any) => u.email === email);
+        console.log('Step 4: Existing user found:', !!existingUser);
         
         if (existingUser) {
           profileId = existingUser.id;
+          console.log('Step 5a: Using existing user:', profileId);
         } else {
           // Create new user
+          console.log('Step 5b: Creating new user for:', email);
           const tempPassword = crypto.randomUUID();
           const { data: newUser, error: createError } = await supabase.auth.admin.createUser({
             email,
@@ -84,17 +94,23 @@ export async function GET(request: NextRequest) {
           });
           
           if (createError || !newUser?.user) {
-            console.error('Failed to create user in setup:', createError);
-            return NextResponse.json({ error: 'Failed to create account' }, { status: 500 });
+            console.error('Step 5b ERROR creating user:', createError);
+            return NextResponse.json({ error: 'Failed to create account', details: createError?.message }, { status: 500 });
           }
           
           profileId = newUser.user.id;
+          console.log('Step 6: User created:', profileId);
           
           // Create profile
-          await supabase.from('profiles').upsert({
+          console.log('Step 7: Creating profile');
+          const { error: profileError } = await supabase.from('profiles').upsert({
             id: profileId,
             created_at: new Date().toISOString()
           }, { onConflict: 'id' });
+          
+          if (profileError) {
+            console.error('Step 7 ERROR creating profile:', profileError);
+          }
         }
         
         // Update Stripe customer with profile_id
