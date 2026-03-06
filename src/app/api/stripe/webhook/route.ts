@@ -1,12 +1,12 @@
 // ============================================================
 // Stripe Webhook Handler
-// Handles subscription lifecycle + Telegram access
+// Handles subscription lifecycle + automatic user creation
 // ============================================================
 
 import { NextRequest, NextResponse } from "next/server";
 import Stripe from "stripe";
 import { createClient } from '@supabase/supabase-js';
-import { addUserToVipChannel, removeUserFromVipChannel, sendMessage } from '@/lib/telegram';
+import { addUserToVipChannel, sendMessage } from '@/lib/telegram';
 
 // Lazy initialization to avoid build-time errors
 const getStripe = () => {
@@ -52,6 +52,10 @@ export async function POST(request: NextRequest) {
 
   try {
     switch (event.type) {
+      case "checkout.session.completed":
+        await handleCheckoutCompleted(event.data.object as Stripe.Checkout.Session);
+        break;
+
       case "customer.subscription.created":
         await handleSubscriptionCreated(event.data.object as Stripe.Subscription);
         break;
@@ -66,10 +70,6 @@ export async function POST(request: NextRequest) {
 
       case "invoice.payment_failed":
         await handlePaymentFailed(event.data.object as Stripe.Invoice);
-        break;
-
-      case "checkout.session.completed":
-        await handleCheckoutCompleted(event.data.object as Stripe.Checkout.Session);
         break;
 
       default:
@@ -88,59 +88,120 @@ export async function POST(request: NextRequest) {
 // ============================================================
 
 async function handleCheckoutCompleted(session: Stripe.Checkout.Session) {
-  const { profile_id, telegram_user_id, telegram_username } = session.metadata || {};
+  const customerEmail = session.customer_email || session.customer_details?.email;
+  const customerId = session.customer as string;
+  const subscriptionId = session.subscription as string;
   
-  if (!profile_id) {
-    console.warn('Checkout completed without profile_id in metadata');
+  if (!customerEmail) {
+    console.error('Checkout completed without email');
     return;
   }
 
   console.log('Checkout completed:', {
-    profile_id,
-    telegram_user_id,
-    customer: session.customer,
-    subscription: session.subscription
+    email: customerEmail,
+    customer: customerId,
+    subscription: subscriptionId
   });
 
-  // Create/update subscriber profile
-  if (telegram_user_id) {
-    await db()
-      .from('subscriber_profiles')
-      .upsert({
-        profile_id,
-        telegram_user_id: parseInt(telegram_user_id),
-        telegram_username: telegram_username || null,
-        subscribed_at: new Date().toISOString()
-      }, {
-        onConflict: 'profile_id'
-      });
+  // Check if user already exists with this email
+  const { data: existingUser } = await db().auth.admin.listUsers();
+  const user = existingUser?.users?.find((u: any) => u.email === customerEmail);
+  
+  let profileId: string;
 
-    // Send VIP channel invite
-    const inviteLink = await addUserToVipChannel(parseInt(telegram_user_id));
+  if (user) {
+    // User exists - use their profile
+    profileId = user.id;
+    console.log('Existing user found:', profileId);
+  } else {
+    // Create new user with a temporary random password
+    // User will set their own password via the setup flow
+    const tempPassword = crypto.randomUUID();
     
-    if (inviteLink) {
-      await sendMessage(parseInt(telegram_user_id),
-        `🎉 <b>Welcome to TipstersKing Premium!</b>\n\n` +
-        `Your subscription is now active. Join the VIP channel for real-time tips:\n\n` +
-        `👇 <b>Join here:</b>\n${inviteLink}\n\n` +
-        `⚠️ This link expires in 24 hours.\n` +
-        `Questions? Contact @TipstersKingSupport`
-      );
+    const { data: newUser, error: createError } = await db().auth.admin.createUser({
+      email: customerEmail,
+      password: tempPassword,
+      email_confirm: true, // Auto-confirm since they just paid
+      user_metadata: {
+        needs_password_setup: true,
+        stripe_customer_id: customerId
+      }
+    });
+
+    if (createError || !newUser?.user) {
+      console.error('Failed to create user:', createError);
+      return;
     }
+
+    profileId = newUser.user.id;
+    console.log('Created new user:', profileId);
+
+    // Create profile record
+    await db()
+      .from('profiles')
+      .upsert({
+        id: profileId,
+        email: customerEmail,
+        created_at: new Date().toISOString()
+      }, { onConflict: 'id' });
   }
+
+  // Store profile_id in Stripe customer metadata for later use
+  const stripe = getStripe();
+  await stripe.customers.update(customerId, {
+    metadata: { profile_id: profileId }
+  });
+
+  // Also update subscription metadata
+  if (subscriptionId) {
+    await stripe.subscriptions.update(subscriptionId, {
+      metadata: { profile_id: profileId }
+    });
+  }
+
+  // Create/update subscriber profile
+  await db()
+    .from('subscriber_profiles')
+    .upsert({
+      profile_id: profileId,
+      subscribed_at: new Date().toISOString()
+    }, {
+      onConflict: 'profile_id'
+    });
+
+  // Send welcome email with setup link
+  // The setup link includes a one-time token for password creation
+  const setupToken = crypto.randomUUID();
+  
+  // Store the setup token (expires in 24h)
+  await db()
+    .from('setup_tokens')
+    .upsert({
+      token: setupToken,
+      profile_id: profileId,
+      email: customerEmail,
+      expires_at: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
+      used: false
+    }, { onConflict: 'profile_id' });
+
+  console.log('Setup token created for:', customerEmail);
 }
 
 async function handleSubscriptionCreated(subscription: Stripe.Subscription) {
   const customerId = subscription.customer as string;
   
-  // Get customer to find profile
-  const stripe = getStripe();
-  const customer = await stripe.customers.retrieve(customerId);
-  if (customer.deleted) return;
-
-  const profileId = subscription.metadata?.profile_id;
+  // Get profile_id from subscription or customer metadata
+  let profileId = subscription.metadata?.profile_id;
+  
   if (!profileId) {
-    console.warn('Subscription created without profile_id');
+    const stripe = getStripe();
+    const customer = await stripe.customers.retrieve(customerId);
+    if (customer.deleted) return;
+    profileId = customer.metadata?.profile_id;
+  }
+
+  if (!profileId) {
+    console.warn('Subscription created without profile_id - will be linked on checkout');
     return;
   }
 
@@ -149,7 +210,7 @@ async function handleSubscriptionCreated(subscription: Stripe.Subscription) {
   const priceAmount = priceItem?.price?.unit_amount || 999;
   const currency = priceItem?.price?.currency || 'eur';
 
-  // Get period dates from subscription (handle API version differences)
+  // Get period dates from subscription
   const sub = subscription as any;
   const periodStart = sub.current_period_start || sub.billing_cycle_anchor;
   const periodEnd = sub.current_period_end;
@@ -170,7 +231,7 @@ async function handleSubscriptionCreated(subscription: Stripe.Subscription) {
       onConflict: 'stripe_subscription_id'
     });
 
-  console.log('Subscription created:', subscription.id);
+  console.log('Subscription created:', subscription.id, 'for profile:', profileId);
 }
 
 async function handleSubscriptionUpdated(subscription: Stripe.Subscription) {
@@ -230,6 +291,7 @@ async function handleSubscriptionDeleted(subscription: Stripe.Subscription) {
 
     if (subscriber?.telegram_user_id) {
       // Remove from VIP channel
+      const { removeUserFromVipChannel } = await import('@/lib/telegram');
       await removeUserFromVipChannel(subscriber.telegram_user_id);
 
       // Notify user

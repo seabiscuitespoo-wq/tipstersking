@@ -125,7 +125,13 @@ async function handleMessage(message: TelegramMessage) {
 
     switch (command.toLowerCase()) {
       case '/start':
-        await handleStart(chatId, userId);
+        // Pass deep link parameter if present (e.g., /start verify_xxx)
+        await handleStart(chatId, userId, args[0]);
+        break;
+
+      case '/verify':
+        // Verify subscriber by email: /verify email@example.com
+        await handleVerifyCommand(chatId, userId, args[0] || '');
         break;
 
       case '/tip':
@@ -215,7 +221,56 @@ async function handleCallbackQuery(query: TelegramCallbackQuery) {
 // Command Handlers
 // ============================================================
 
-async function handleStart(chatId: number, telegramUserId: number) {
+async function handleStart(chatId: number, telegramUserId: number, startParam?: string) {
+  const telegramUsername = ''; // Will be passed from message.from.username
+  
+  // Handle deep link parameters
+  if (startParam) {
+    // Subscriber verification: /start verify_PROFILEID
+    if (startParam.startsWith('verify_')) {
+      const profileId = startParam.replace('verify_', '');
+      await handleSubscriberVerification(chatId, telegramUserId, profileId);
+      return;
+    }
+    
+    // Legacy link format: /start link_CODE_PROFILEID
+    if (startParam.startsWith('link_')) {
+      const parts = startParam.split('_');
+      if (parts.length >= 3) {
+        const profileId = parts[2];
+        await handleSubscriberVerification(chatId, telegramUserId, profileId);
+        return;
+      }
+    }
+  }
+  
+  // Check if already a linked subscriber
+  const { data: subscriber } = await db()
+    .from('subscriber_profiles')
+    .select('profile_id, verified_at')
+    .eq('telegram_user_id', telegramUserId)
+    .single();
+  
+  if (subscriber?.verified_at) {
+    // Check subscription status
+    const { data: subscription } = await db()
+      .from('subscriptions')
+      .select('status')
+      .eq('profile_id', subscriber.profile_id)
+      .in('status', ['active', 'trialing'])
+      .single();
+    
+    if (subscription) {
+      await sendMessage(chatId,
+        '✅ <b>You\'re already verified!</b>\n\n' +
+        'Your Telegram is linked to your TipstersKing account.\n\n' +
+        '📺 Tips are posted in the VIP channel.\n' +
+        '📊 View your dashboard: https://tipstersking.com/dashboard'
+      );
+      return;
+    }
+  }
+  
   // Check if user is a registered tipster
   const { data: tipster } = await db()
     .from('tipster_profiles')
@@ -236,11 +291,135 @@ async function handleStart(chatId: number, telegramUserId: number) {
       'We\'ll notify you once approved!'
     );
   } else {
+    // New user - show options
     await sendMessage(chatId,
-      '👑 <b>TipstersKing Bot</b>\n\n' +
-      'Want to become a tipster? Apply at:\n' +
-      'https://tipstersking.com/apply\n\n' +
-      'Already a subscriber? Real-time tips are posted in our VIP channel.'
+      '👑 <b>Welcome to TipstersKing!</b>\n\n' +
+      '🎯 <b>Already subscribed?</b>\n' +
+      'Use /verify followed by your email to link your account:\n' +
+      '<code>/verify your@email.com</code>\n\n' +
+      '💰 <b>Want to subscribe?</b>\n' +
+      'Get real-time tips from top tipsters:\n' +
+      'https://tipstersking.com/pricing\n\n' +
+      '🏆 <b>Want to become a tipster?</b>\n' +
+      'Apply at: https://tipstersking.com/apply'
+    );
+  }
+}
+
+// Handle subscriber verification
+async function handleSubscriberVerification(
+  chatId: number, 
+  telegramUserId: number, 
+  profileId: string
+) {
+  try {
+    // Check if this profile has an active subscription
+    const { data: subscription } = await db()
+      .from('subscriptions')
+      .select('status, profile_id')
+      .eq('profile_id', profileId)
+      .in('status', ['active', 'trialing'])
+      .single();
+    
+    if (!subscription) {
+      await sendMessage(chatId,
+        '⚠️ <b>No active subscription found</b>\n\n' +
+        'Make sure you have an active subscription.\n' +
+        'Subscribe at: https://tipstersking.com/pricing'
+      );
+      return;
+    }
+    
+    // Link Telegram to subscriber profile
+    await db()
+      .from('subscriber_profiles')
+      .upsert({
+        profile_id: profileId,
+        telegram_user_id: telegramUserId,
+        verified_at: new Date().toISOString()
+      }, { onConflict: 'profile_id' });
+    
+    // Generate VIP channel invite
+    const inviteLink = await addUserToVipChannel(telegramUserId);
+    
+    if (inviteLink) {
+      await sendMessage(chatId,
+        '🎉 <b>Verification Complete!</b>\n\n' +
+        'Your Telegram is now linked to your TipstersKing account.\n\n' +
+        '👇 <b>Join the VIP Channel:</b>\n' +
+        `${inviteLink}\n\n` +
+        '⚠️ This link expires in 24 hours.\n\n' +
+        '🔔 Turn on notifications so you never miss a tip!'
+      );
+    } else {
+      await sendMessage(chatId,
+        '✅ <b>Verification Complete!</b>\n\n' +
+        'Your Telegram is now linked.\n\n' +
+        'However, we couldn\'t generate an invite link automatically.\n' +
+        'Please contact @TipstersKingSupport for VIP channel access.'
+      );
+    }
+  } catch (error) {
+    console.error('Subscriber verification error:', error);
+    await sendMessage(chatId,
+      '❌ <b>Verification Failed</b>\n\n' +
+      'Something went wrong. Please try again or contact support.'
+    );
+  }
+}
+
+// Handle /verify command
+async function handleVerifyCommand(chatId: number, telegramUserId: number, email: string) {
+  if (!email || !email.includes('@')) {
+    await sendMessage(chatId,
+      '⚠️ <b>Invalid email</b>\n\n' +
+      'Usage: <code>/verify your@email.com</code>'
+    );
+    return;
+  }
+  
+  try {
+    // Find profile by email
+    const { data: profile } = await db()
+      .from('profiles')
+      .select('id, email')
+      .eq('email', email.toLowerCase())
+      .single();
+    
+    if (!profile) {
+      await sendMessage(chatId,
+        '⚠️ <b>Email not found</b>\n\n' +
+        'No account found with this email.\n\n' +
+        'Make sure you\'ve completed the checkout process:\n' +
+        'https://tipstersking.com/pricing'
+      );
+      return;
+    }
+    
+    // Check for active subscription
+    const { data: subscription } = await db()
+      .from('subscriptions')
+      .select('status')
+      .eq('profile_id', profile.id)
+      .in('status', ['active', 'trialing'])
+      .single();
+    
+    if (!subscription) {
+      await sendMessage(chatId,
+        '⚠️ <b>No active subscription</b>\n\n' +
+        'Your account exists but doesn\'t have an active subscription.\n\n' +
+        'Subscribe at: https://tipstersking.com/pricing'
+      );
+      return;
+    }
+    
+    // Verify and link
+    await handleSubscriberVerification(chatId, telegramUserId, profile.id);
+    
+  } catch (error) {
+    console.error('Verify command error:', error);
+    await sendMessage(chatId,
+      '❌ Something went wrong. Please try again.'
     );
   }
 }
